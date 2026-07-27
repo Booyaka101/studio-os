@@ -16,6 +16,7 @@ Run tests: `npm test`. Start: `npm start` (PORT env, default 3000).
 - [x] Mindbody importer: `src/services/importer.js` (CSV parser, mapping defaults + overrides, idempotent by email), `scripts/import-mindbody.mjs` CLI (--clients/--passes/--mapping/--db/--dry-run), realistic fixtures `test/fixtures/mindbody-{clients,passes}.csv` (edge cases: missing email, quoted commas, uppercase email, malformed row), admin `/admin/import` page wired, 8 importer tests + 1 web test (56 total green)
 
 - [x] Stripe webhook tests `test/stripe.test.js` (11 tests, mock client, no network): signature reject, pack/membership/drop-in fulfillment, replay idempotency, subscription cancel, 500-retry on unknown product, checkout session params (67 total green)
+- [x] `scripts/seed.mjs` (demo studio: 3 instructors, 4 class types, 8 weekly rules → 64 instances, products, 4 clients w/ passes+membership, 2×2 demo bookings; refuses non-empty DB without --force; login owner@example.com/studio-demo), Dockerfile (node:22-slim, VOLUME /app/data) + .dockerignore + docker-compose.yml (studio-data volume), README.md (quickstart Docker+Node, Mindbody migration guide, Stripe guide, limitations, roadmap), CHANGELOG.md. NOTE: docker build not run locally ($0/no-network guardrail) — image untested.
 
 ## Next (exact order)
 7. `scripts/seed.mjs`, Dockerfile, docker-compose.yml, README.md, CHANGELOG.md
