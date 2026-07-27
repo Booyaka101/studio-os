@@ -1,0 +1,39 @@
+<%- include('../partials/head') %>
+<h3>Mindbody import</h3>
+<p><small>Export from Mindbody (Reports → Clients / Pricing Options), open the CSV in a text editor and paste it below.
+Re-running is safe: existing clients are matched by email and updated, never duplicated.
+You can also use the CLI: <code>npm run import-mindbody -- --clients file.csv --dry-run</code></small></p>
+<form method="post" action="/admin/import">
+  <div class="grid">
+    <label>What are you importing?
+      <select name="kind">
+        <option value="clients" <%= kind === 'clients' ? 'selected' : '' %>>Clients export</option>
+        <option value="passes" <%= kind === 'passes' ? 'selected' : '' %>>Pricing options / passes export</option>
+      </select>
+    </label>
+    <label>
+      <input type="checkbox" name="dry_run" value="1" <%= dryRun ? 'checked' : '' %>>
+      Dry run (preview only, no changes)
+    </label>
+  </div>
+  <label>CSV content
+    <textarea name="csv" rows="10" placeholder="First Name,Last Name,Email,Phone&#10;Jane,Chan,jane@example.com,+852 9123 4567" required></textarea>
+  </label>
+  <button>Import</button>
+</form>
+<% if (result) { %>
+<article>
+  <h5>Result<%= dryRun ? ' (dry run — nothing written)' : '' %></h5>
+  <p><strong><%= result.created %></strong> created · <strong><%= result.updated %></strong> updated · <strong><%= result.skipped %></strong> skipped
+  <% if (result.clientsCreated) { %> · <%= result.clientsCreated %> clients auto-created<% } %></p>
+  <details>
+    <summary>Row-by-row detail</summary>
+    <ul>
+    <% for (const row of result.rows.slice(0, 200)) { %>
+      <li><code><%= row.action %></code> <%= row.email || '' %> <%= row.name || row.passName || '' %> <%= row.reason ? `— ${row.reason}` : '' %></li>
+    <% } %>
+    </ul>
+  </details>
+</article>
+<% } %>
+<%- include('../partials/foot') %>

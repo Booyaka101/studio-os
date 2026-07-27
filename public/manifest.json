@@ -1,0 +1,17 @@
+{
+  "name": "Studio OS",
+  "short_name": "Studio",
+  "description": "Class schedule and bookings",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f7cac",
+  "icons": [
+    {
+      "src": "/js/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

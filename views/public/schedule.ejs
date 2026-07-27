@@ -1,0 +1,49 @@
+<%- include('../partials/head', { adminNav: false }) %>
+<hgroup>
+  <h2>Class schedule</h2>
+  <p>Next 14 days</p>
+</hgroup>
+<form method="get" action="/" class="grid filters">
+  <select name="type" onchange="this.form.submit()">
+    <option value="">All classes</option>
+    <% for (const t of types) { %>
+      <option value="<%= t.id %>" <%= filterType === t.id ? 'selected' : '' %>><%= t.name %></option>
+    <% } %>
+  </select>
+  <select name="instructor" onchange="this.form.submit()">
+    <option value="">All instructors</option>
+    <% for (const i of instructors) { %>
+      <option value="<%= i.id %>" <%= filterInstructor === i.id ? 'selected' : '' %>><%= i.name %></option>
+    <% } %>
+  </select>
+</form>
+<% if (!instances.length) { %>
+  <article>No upcoming classes match. Check back soon!</article>
+<% } %>
+<%
+  let lastDay = '';
+  for (const inst of instances) {
+    const day = fmtDt(inst.starts_at, { weekday: 'long', day: 'numeric', month: 'long', hour: undefined, minute: undefined });
+%>
+  <% if (day !== lastDay) { lastDay = day; %><h4 class="day-header"><%= day %></h4><% } %>
+  <article class="class-row" style="border-left: 6px solid <%= inst.color %>">
+    <div class="grid">
+      <div>
+        <strong><%= fmtDt(inst.starts_at, { weekday: undefined, day: undefined, month: undefined }) %></strong>
+        · <a href="/class/<%= inst.id %>"><%= inst.class_name %></a>
+        <% if (inst.instructor_name) { %><small>with <%= inst.instructor_name %></small><% } %>
+      </div>
+      <div class="right">
+        <% const left = inst.capacity - inst.booked_count; %>
+        <% if (left > 0) { %>
+          <small><%= left %> spot<%= left === 1 ? '' : 's' %> left</small>
+          <a href="/class/<%= inst.id %>" role="button" class="slim">Book</a>
+        <% } else { %>
+          <small>Full<% if (inst.waitlist_count) { %> · <%= inst.waitlist_count %> waitlisted<% } %></small>
+          <a href="/class/<%= inst.id %>" role="button" class="slim outline">Join waitlist</a>
+        <% } %>
+      </div>
+    </div>
+  </article>
+<% } %>
+<%- include('../partials/foot') %>

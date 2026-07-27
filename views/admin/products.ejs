@@ -1,0 +1,83 @@
+<%- include('../partials/head') %>
+<h3>Products</h3>
+<div class="grid">
+  <section>
+    <h4>Class packs (buy page)</h4>
+    <details open>
+      <summary role="button" class="outline">Add pack product</summary>
+      <form method="post" action="/admin/products/pack">
+        <div class="grid">
+          <label>Name <input name="name" required placeholder="10-class pack"></label>
+          <label>Credits <input type="number" name="credits" value="10" min="1"></label>
+        </div>
+        <div class="grid">
+          <label>Price <input type="number" name="price" step="0.01" min="0" required></label>
+          <label>Validity (days) <input type="number" name="validity_days" min="1" placeholder="never expires"></label>
+        </div>
+        <label>Stripe Price ID <input name="stripe_price_id" placeholder="price_… (optional)"></label>
+        <button>Add</button>
+      </form>
+    </details>
+    <% for (const p of packs) { %>
+      <details>
+        <summary><strong><%= p.name %></strong> · <%= p.credits %> credits · <%= fmtMoney(p.price_cents) %><%= p.active ? '' : ' · INACTIVE' %></summary>
+        <form method="post" action="/admin/products/pack/<%= p.id %>">
+          <div class="grid">
+            <label>Name <input name="name" value="<%= p.name %>"></label>
+            <label>Credits <input type="number" name="credits" value="<%= p.credits %>"></label>
+            <label>Price <input type="number" name="price" step="0.01" value="<%= (p.price_cents/100).toFixed(2) %>"></label>
+            <label>Validity days <input type="number" name="validity_days" value="<%= p.validity_days || '' %>"></label>
+          </div>
+          <label>Stripe Price ID <input name="stripe_price_id" value="<%= p.stripe_price_id || '' %>"></label>
+          <div class="grid">
+            <button>Save</button>
+            <button name="action" value="toggle" class="outline secondary"><%= p.active ? 'Deactivate' : 'Reactivate' %></button>
+          </div>
+        </form>
+      </details>
+    <% } %>
+  </section>
+  <section>
+    <h4>Membership plans</h4>
+    <details open>
+      <summary role="button" class="outline">Add plan</summary>
+      <form method="post" action="/admin/products/plan">
+        <div class="grid">
+          <label>Name <input name="name" required placeholder="Monthly unlimited"></label>
+          <label>Price/month <input type="number" name="price" step="0.01" min="0" required></label>
+        </div>
+        <div class="grid">
+          <label>Type
+            <select name="unlimited"><option value="1">Unlimited</option><option value="0">Credit-based</option></select>
+          </label>
+          <label>Credits/month <input type="number" name="credits_per_month" min="1" placeholder="8"></label>
+        </div>
+        <label>Stripe Price ID <input name="stripe_price_id" placeholder="price_… (required for online subscribe)"></label>
+        <button>Add</button>
+      </form>
+    </details>
+    <% for (const p of plans) { %>
+      <details>
+        <summary><strong><%= p.name %></strong> · <%= fmtMoney(p.price_cents) %>/mo · <%= p.unlimited ? 'unlimited' : `${p.credits_per_month}/mo` %><%= p.active ? '' : ' · INACTIVE' %></summary>
+        <form method="post" action="/admin/products/plan/<%= p.id %>">
+          <div class="grid">
+            <label>Name <input name="name" value="<%= p.name %>"></label>
+            <label>Price <input type="number" name="price" step="0.01" value="<%= (p.price_cents/100).toFixed(2) %>"></label>
+          </div>
+          <div class="grid">
+            <label>Type
+              <select name="unlimited"><option value="1" <%= p.unlimited ? 'selected' : '' %>>Unlimited</option><option value="0" <%= p.unlimited ? '' : 'selected' %>>Credit-based</option></select>
+            </label>
+            <label>Credits/month <input type="number" name="credits_per_month" value="<%= p.credits_per_month || '' %>"></label>
+          </div>
+          <label>Stripe Price ID <input name="stripe_price_id" value="<%= p.stripe_price_id || '' %>"></label>
+          <div class="grid">
+            <button>Save</button>
+            <button name="action" value="toggle" class="outline secondary"><%= p.active ? 'Deactivate' : 'Reactivate' %></button>
+          </div>
+        </form>
+      </details>
+    <% } %>
+  </section>
+</div>
+<%- include('../partials/foot') %>

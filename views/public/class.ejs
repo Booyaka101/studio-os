@@ -1,0 +1,29 @@
+<%- include('../partials/head', { adminNav: false }) %>
+<article style="border-top: 6px solid <%= inst.color %>">
+  <hgroup>
+    <h2><%= inst.class_name %></h2>
+    <p><%= fmtDt(inst.starts_at) %> · <%= inst.duration_min %> min<% if (inst.instructor_name) { %> · <%= inst.instructor_name %><% } %></p>
+  </hgroup>
+  <% if (inst.class_description) { %><p><%= inst.class_description %></p><% } %>
+  <p>
+    <% const left = inst.capacity - inst.booked_count; %>
+    <% if (full) { %><mark>This class is full — you can join the waitlist.</mark>
+    <% } else { %><small><%= left %> of <%= inst.capacity %> spots available.</small><% } %>
+    <% if (inst.drop_in_price_cents > 0) { %><br><small>Drop-in price: <%= fmtMoney(inst.drop_in_price_cents) %> · uses <%= inst.credits_required %> credit<%= inst.credits_required === 1 ? '' : 's' %> from a pass</small><% } %>
+  </p>
+  <% if (error) { %><p class="flash error" role="alert"><%= error %></p><% } %>
+  <form method="post" action="/class/<%= inst.id %>/book">
+    <div class="grid">
+      <label>Your name <input name="name" value="<%= form.name || '' %>" placeholder="Jane Chan"></label>
+      <label>Email <input type="email" name="email" required value="<%= form.email || '' %>" placeholder="you@example.com"></label>
+    </div>
+    <details>
+      <summary>Liability waiver (required for first booking)</summary>
+      <div class="waiver-box"><%- waiverHtml %></div>
+      <label><input type="checkbox" name="waiver_agree" value="1"> I have read and agree to the waiver</label>
+    </details>
+    <button type="submit"><%= full ? 'Join waitlist' : 'Book this class' %></button>
+  </form>
+  <p><small>Already booked with us before? Just use the same email — membership or class-pack credits are applied automatically.</small></p>
+</article>
+<%- include('../partials/foot') %>

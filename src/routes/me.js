@@ -51,8 +51,10 @@ export default function meRoutes(services) {
       "SELECT * FROM memberships WHERE client_id = ? AND status = 'active'"
     ).all(client.id);
     const windowHours = Number(getSetting(db, 'cancellation_window_hours', '12'));
+    // NB: the local is named clientInfo because `client` is a reserved EJS
+    // option name (client-mode compilation) when present in render data.
     res.render('public/me', {
-      title: 'My bookings', client, token, bookings, passes, memberships, windowHours,
+      title: 'My bookings', clientInfo: client, token, bookings, passes, memberships, windowHours,
     });
   });
 

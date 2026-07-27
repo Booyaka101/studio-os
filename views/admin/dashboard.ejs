@@ -1,0 +1,55 @@
+<%- include('../partials/head') %>
+<div class="grid">
+  <article>
+    <h4>This week's revenue</h4>
+    <h2><%= fmtMoney(weekRevenue) %></h2>
+    <small>paid in the last 7 days · <a href="/admin/reports">reports</a></small>
+  </article>
+  <article>
+    <h4>Status</h4>
+    <p><small>Stripe: <%= stripeConfigured ? 'connected' : 'not connected — purchases fall back to pay-at-studio' %><br>
+    Email: <%= smtpConfigured ? 'SMTP configured' : 'off — messages saved to data/outbox, links shown on screen' %></small></p>
+  </article>
+</div>
+<section>
+  <h4>Today's classes</h4>
+  <% if (!todayClasses.length) { %><p>No classes today.</p><% } %>
+  <% for (const c of todayClasses) { %>
+    <article class="class-row" style="border-left: 6px solid <%= c.color %>">
+      <div class="grid">
+        <div>
+          <strong><%= fmtDt(c.starts_at, { weekday: undefined, day: undefined, month: undefined }) %></strong>
+          · <a href="/admin/instances/<%= c.id %>"><%= c.class_name %></a>
+          <% if (c.instructor_name) { %><small>(<%= c.instructor_name %>)</small><% } %>
+          <% if (c.status === 'cancelled') { %><mark>cancelled</mark><% } %>
+        </div>
+        <div class="right">
+          <a href="/admin/instances/<%= c.id %>"><%= c.booked_count %>/<%= c.capacity %> booked<% if (c.waitlist_count) { %> · +<%= c.waitlist_count %> WL<% } %></a>
+        </div>
+      </div>
+    </article>
+  <% } %>
+</section>
+<div class="grid">
+  <section>
+    <h4>Pending payments</h4>
+    <% if (!pendingPayments.length) { %><p><small>None — all settled.</small></p><% } %>
+    <% for (const p of pendingPayments) { %>
+      <article class="slim-row">
+        <%= p.client_name || 'Unknown' %> · <%= fmtMoney(p.amount_cents) %> <small>(<%= p.what %>)</small>
+        <form method="post" action="/admin/payments/<%= p.id %>/paid" class="inline-form">
+          <select name="method" class="slim-select"><option value="cash">cash</option><option value="fps">FPS</option><option value="other">other</option></select>
+          <button class="slim">Mark paid</button>
+        </form>
+      </article>
+    <% } %>
+  </section>
+  <section>
+    <h4>Passes expiring in 30 days</h4>
+    <% if (!expiringPasses.length) { %><p><small>None.</small></p><% } %>
+    <% for (const p of expiringPasses) { %>
+      <p class="slim-row"><a href="/admin/clients/<%= p.client_id %>"><%= p.client_name %></a> — <%= p.name %>, <%= p.credits_remaining %> credits, expires <%= p.expires_on %></p>
+    <% } %>
+  </section>
+</div>
+<%- include('../partials/foot') %>

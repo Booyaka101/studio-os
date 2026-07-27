@@ -1,0 +1,45 @@
+<%- include('../partials/head') %>
+<h3>Class types</h3>
+<details open>
+  <summary role="button" class="outline">Add class type</summary>
+  <form method="post" action="/admin/class-types">
+    <div class="grid">
+      <label>Name <input name="name" required></label>
+      <label>Color <input type="color" name="color" value="#4f7cac"></label>
+    </div>
+    <label>Description <input name="description"></label>
+    <div class="grid">
+      <label>Duration (min) <input type="number" name="duration_min" value="60" min="5"></label>
+      <label>Capacity <input type="number" name="capacity" value="10" min="1"></label>
+      <label>Drop-in price <input type="number" name="drop_in_price" value="0" min="0" step="0.01"></label>
+      <label>Credits required <input type="number" name="credits_required" value="1" min="1"></label>
+    </div>
+    <button>Add</button>
+  </form>
+</details>
+<% for (const t of types) { %>
+  <details>
+    <summary style="border-left: 6px solid <%= t.color %>; padding-left: .5rem">
+      <strong><%= t.name %></strong> · <%= t.duration_min %>min · cap <%= t.capacity %> · <%= fmtMoney(t.drop_in_price_cents) %> drop-in
+      <%= t.active ? '' : ' · INACTIVE' %>
+    </summary>
+    <form method="post" action="/admin/class-types/<%= t.id %>">
+      <div class="grid">
+        <label>Name <input name="name" value="<%= t.name %>" required></label>
+        <label>Color <input type="color" name="color" value="<%= t.color %>"></label>
+      </div>
+      <label>Description <input name="description" value="<%= t.description %>"></label>
+      <div class="grid">
+        <label>Duration <input type="number" name="duration_min" value="<%= t.duration_min %>"></label>
+        <label>Capacity <input type="number" name="capacity" value="<%= t.capacity %>"></label>
+        <label>Drop-in price <input type="number" name="drop_in_price" value="<%= (t.drop_in_price_cents / 100).toFixed(2) %>" step="0.01"></label>
+        <label>Credits <input type="number" name="credits_required" value="<%= t.credits_required %>"></label>
+      </div>
+      <div class="grid">
+        <button>Save</button>
+        <button name="action" value="toggle" class="outline secondary"><%= t.active ? 'Deactivate' : 'Reactivate' %></button>
+      </div>
+    </form>
+  </details>
+<% } %>
+<%- include('../partials/foot') %>

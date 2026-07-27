@@ -1,0 +1,34 @@
+<%- include('../partials/head') %>
+<h3>Reports</h3>
+<section>
+  <h4>Revenue by month <a href="/admin/reports.csv?report=revenue" role="button" class="slim outline">CSV</a></h4>
+  <table>
+    <thead><tr><th>Month</th><th>Total</th><th>Drop-ins</th><th>Packs</th><th>Memberships</th><th>Payments</th></tr></thead>
+    <tbody>
+    <% for (const r of revenue) { %>
+      <tr>
+        <td><%= r.month %></td>
+        <td><strong><%= fmtMoney(r.total) %></strong></td>
+        <td><%= fmtMoney(r.drop_in) %></td>
+        <td><%= fmtMoney(r.pack) %></td>
+        <td><%= fmtMoney(r.membership) %></td>
+        <td><%= r.count %></td>
+      </tr>
+    <% } %>
+    <% if (!revenue.length) { %><tr><td colspan="6">No paid payments yet.</td></tr><% } %>
+    </tbody>
+  </table>
+</section>
+<section>
+  <h4>Attendance by class type <a href="/admin/reports.csv?report=attendance" role="button" class="slim outline">CSV</a></h4>
+  <table>
+    <thead><tr><th>Class type</th><th>Attended</th><th>No-shows</th><th>Booked (upcoming)</th><th>Total</th></tr></thead>
+    <tbody>
+    <% for (const a of attendance) { %>
+      <tr><td><%= a.class_type %></td><td><%= a.attended %></td><td><%= a.no_shows %></td><td><%= a.booked %></td><td><%= a.total %></td></tr>
+    <% } %>
+    <% if (!attendance.length) { %><tr><td colspan="5">No bookings yet.</td></tr><% } %>
+    </tbody>
+  </table>
+</section>
+<%- include('../partials/foot') %>

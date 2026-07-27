@@ -1,0 +1,33 @@
+<%- include('../partials/head') %>
+<h3>Clients</h3>
+<form method="get" action="/admin/clients" class="grid">
+  <input type="search" name="q" value="<%= q %>" placeholder="Search name, email or phone">
+  <button class="slim">Search</button>
+</form>
+<details <%= clients.length ? '' : 'open' %>>
+  <summary role="button" class="outline">Add client</summary>
+  <form method="post" action="/admin/clients">
+    <div class="grid">
+      <label>Name <input name="name"></label>
+      <label>Email <input type="email" name="email" required></label>
+      <label>Phone <input name="phone"></label>
+    </div>
+    <button>Add</button>
+  </form>
+</details>
+<table>
+  <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Waiver</th><th>Source</th></tr></thead>
+  <tbody>
+  <% for (const c of clients) { %>
+    <tr>
+      <td><a href="/admin/clients/<%= c.id %>"><%= c.name %></a></td>
+      <td><%= c.email %></td>
+      <td><%= c.phone %></td>
+      <td><%= c.waiver_signed_at ? 'signed' : '—' %></td>
+      <td><%= c.source %></td>
+    </tr>
+  <% } %>
+  <% if (!clients.length) { %><tr><td colspan="5">No clients found.</td></tr><% } %>
+  </tbody>
+</table>
+<%- include('../partials/foot') %>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Welcome — Studio OS setup</title>
+  <link rel="stylesheet" href="/vendor/pico.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+</head>
+<body>
+<main class="container narrow">
+  <hgroup>
+    <h1>Welcome to Studio OS</h1>
+    <p>Two minutes of setup and your studio is online.</p>
+  </hgroup>
+  <% if (error) { %><article class="flash error" role="alert"><%= error %></article><% } %>
+  <form method="post" action="/setup">
+    <label>Studio name
+      <input name="studio_name" required placeholder="Harbour Yoga" value="<%= form.studio_name || '' %>">
+    </label>
+    <div class="grid">
+      <label>Timezone
+        <select name="timezone">
+          <% for (const tzName of timezones) { %>
+            <option value="<%= tzName %>" <%= (form.timezone || 'Asia/Hong_Kong') === tzName ? 'selected' : '' %>><%= tzName %></option>
+          <% } %>
+        </select>
+      </label>
+      <label>Currency (ISO code)
+        <input name="currency" maxlength="3" value="<%= form.currency || 'HKD' %>">
+      </label>
+    </div>
+    <h4>Owner account</h4>
+    <label>Email
+      <input type="email" name="email" required value="<%= form.email || '' %>">
+    </label>
+    <div class="grid">
+      <label>Password (min 8 chars)
+        <input type="password" name="password" minlength="8" required>
+      </label>
+      <label>Repeat password
+        <input type="password" name="password2" minlength="8" required>
+      </label>
+    </div>
+    <label>
+      <input type="checkbox" name="seed_examples" value="1" checked>
+      Create two example class types to explore with
+    </label>
+    <button type="submit">Create my studio</button>
+  </form>
+</main>
+</body>
+</html>

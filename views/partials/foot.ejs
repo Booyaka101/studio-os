@@ -1,0 +1,11 @@
+</main>
+<footer class="container">
+  <small><%= settings.studio_name || 'Studio OS' %> · powered by <a href="https://github.com/studio-os">Studio OS</a> (self-hosted)</small>
+</footer>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/js/sw.js').catch(function () {});
+}
+</script>
+</body>
+</html>

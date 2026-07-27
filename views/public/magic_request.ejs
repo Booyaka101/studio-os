@@ -1,0 +1,21 @@
+<%- include('../partials/head', { adminNav: false }) %>
+<article class="narrow">
+  <h2>My bookings</h2>
+  <% if (error) { %><p class="flash error" role="alert"><%= error %></p><% } %>
+  <% if (sent) { %>
+    <% if (magicUrl) { %>
+      <p>Here's your personal booking link:</p>
+      <p><a href="<%= magicUrl %>" role="button">Open my bookings</a></p>
+      <p><small>(Email sending is not configured on this studio, so the link is shown here. It's valid for 7 days.)</small></p>
+    <% } else { %>
+      <p>If that email has an account with us, a booking-management link is on its way to your inbox.</p>
+    <% } %>
+  <% } else { %>
+    <p>Enter your email and we'll give you a secure link to view and manage your bookings. No password needed.</p>
+    <form method="post" action="/magic-link">
+      <label>Email <input type="email" name="email" required placeholder="you@example.com"></label>
+      <button type="submit">Send me my link</button>
+    </form>
+  <% } %>
+</article>
+<%- include('../partials/foot') %>

@@ -1,0 +1,17 @@
+<%- include('../partials/head', { adminNav: false }) %>
+<article>
+  <% if (error) { %><p class="flash error" role="alert"><%= error %></p><% } %>
+  <h2>Almost there</h2>
+  <% const item = product || plan; %>
+  <% if (item) { %>
+    <p>You're reserving: <strong><%= item.name %></strong>
+       — <%= fmtMoney(item.price_cents) %><%= plan ? '/month' : '' %></p>
+  <% } %>
+  <p>Online payment isn't enabled<%= plan && stripeConfigured ? ' for this plan' : '' %>, so to complete your purchase:</p>
+  <ol>
+    <li>Pay at the studio (cash / FPS / bank transfer) or contact us to arrange payment.</li>
+    <li>Mention the email you entered<%= email ? ` (${email})` : '' %> — we'll activate it on your account right away.</li>
+  </ol>
+  <p><a href="/buy">Back to passes</a> · <a href="/">Schedule</a></p>
+</article>
+<%- include('../partials/foot') %>

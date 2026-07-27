@@ -1,0 +1,26 @@
+<%- include('../partials/head', { adminNav: false }) %>
+<article>
+  <% if (result.waitlisted) { %>
+    <h2>You're on the waitlist</h2>
+    <p><strong><%= inst.class_name %></strong> on <%= fmtDt(inst.starts_at) %> is currently full.
+       You're #<%= result.booking.id ? '' : '' %> in line — if a spot opens we'll book you in automatically<%= smtpConfigured ? ' and email you' : '' %>.</p>
+  <% } else { %>
+    <h2>You're booked!</h2>
+    <p><strong><%= inst.class_name %></strong> · <%= fmtDt(inst.starts_at) %></p>
+    <p>Payment:
+      <% if (result.booking.paid_with === 'pack') { %>1 credit deducted from your class pack.
+      <% } else if (result.booking.paid_with === 'membership') { %>covered by your membership.
+      <% } else if (result.paymentId) { %>please pay <%= fmtMoney(inst.drop_in_price_cents) %> at the studio (cash/FPS) before class.
+      <% } else { %>drop-in.
+      <% } %>
+    </p>
+  <% } %>
+  <p>Manage or cancel your bookings any time:</p>
+  <p><a href="<%= magicUrl %>" role="button" class="outline">My bookings</a></p>
+  <% if (!smtpConfigured) { %>
+    <p><small>Save that link — it's your personal booking manager (valid 7 days; you can request a new one from “My bookings” in the menu).</small></p>
+  <% } else { %>
+    <p><small>A confirmation email with your personal link is on its way.</small></p>
+  <% } %>
+</article>
+<%- include('../partials/foot') %>

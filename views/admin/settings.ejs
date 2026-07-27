@@ -1,0 +1,53 @@
+<%- include('../partials/head') %>
+<h3>Settings</h3>
+<form method="post" action="/admin/settings">
+  <div class="grid">
+    <label>Studio name <input name="studio_name" value="<%= settings.studio_name %>"></label>
+    <label>Timezone <input name="timezone" value="<%= settings.timezone %>" placeholder="Asia/Hong_Kong"></label>
+    <label>Currency <input name="currency" maxlength="3" value="<%= settings.currency %>"></label>
+  </div>
+  <div class="grid">
+    <label>Cancellation window (hours)
+      <input type="number" name="cancellation_window_hours" min="0" value="<%= settings.cancellation_window_hours %>">
+    </label>
+    <label>Late-cancel policy
+      <select name="late_cancel_policy">
+        <option value="forfeit" <%= settings.late_cancel_policy === 'forfeit' ? 'selected' : '' %>>Forfeit credit (default)</option>
+        <option value="refund" <%= settings.late_cancel_policy === 'refund' ? 'selected' : '' %>>Refund credit anyway</option>
+      </select>
+    </label>
+  </div>
+  <label>Waiver text (Markdown)
+    <textarea name="waiver_markdown" rows="8"><%= settings.waiver_markdown %></textarea>
+  </label>
+  <button>Save settings</button>
+</form>
+<div class="grid">
+  <article>
+    <h5>Integrations (set via environment / .env)</h5>
+    <p><small>
+      Stripe secret key: <strong><%= stripeConfigured ? 'set' : 'not set' %></strong><br>
+      Stripe webhook secret: <strong><%= locals.services ? '' : '' %><%= stripeConfigured ? (settings.stripe_webhook_hint || 'see .env') : '—' %></strong><br>
+      SMTP: <strong><%= smtpConfigured ? 'configured' : 'not set (emails go to data/outbox/, links shown on screen)' %></strong>
+    </small></p>
+  </article>
+  <article>
+    <h5>Backup</h5>
+    <p><small>Downloads a consistent snapshot of the SQLite database (VACUUM INTO).</small></p>
+    <a href="/admin/backup" role="button" class="outline">Download backup</a>
+  </article>
+</div>
+<% if (user && user.role === 'owner') { %>
+<article>
+  <h5>Add staff account</h5>
+  <form method="post" action="/admin/staff">
+    <div class="grid">
+      <label>Name <input name="name"></label>
+      <label>Email <input type="email" name="email" required></label>
+      <label>Password <input type="password" name="password" minlength="8" required></label>
+    </div>
+    <button class="slim">Create staff login</button>
+  </form>
+</article>
+<% } %>
+<%- include('../partials/foot') %>

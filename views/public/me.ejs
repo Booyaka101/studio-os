@@ -1,0 +1,47 @@
+<%- include('../partials/head', { adminNav: false }) %>
+<hgroup>
+  <h2>Hi <%= clientInfo.name %></h2>
+  <p><%= clientInfo.email %></p>
+</hgroup>
+<section>
+  <h4>Upcoming bookings</h4>
+  <% if (!bookings.length) { %><p>No upcoming bookings. <a href="/">Browse the schedule</a></p><% } %>
+  <% for (const b of bookings) { %>
+    <article class="class-row">
+      <div class="grid">
+        <div>
+          <strong><%= b.class_name %></strong> · <%= fmtDt(b.starts_at) %>
+          <% if (b.instructor_name) { %><small>with <%= b.instructor_name %></small><% } %>
+          <% if (b.status === 'waitlist') { %><mark>waitlist</mark><% } %>
+        </div>
+        <div class="right">
+          <form method="post" action="/me/cancel/<%= b.id %>">
+            <input type="hidden" name="token" value="<%= token %>">
+            <button class="slim outline secondary"
+              onclick="return confirm('Cancel this booking?')">Cancel</button>
+          </form>
+        </div>
+      </div>
+    </article>
+  <% } %>
+  <p><small>Cancel at least <%= windowHours %> hours before class starts to get your credit back.</small></p>
+</section>
+<div class="grid">
+  <section>
+    <h4>Class packs</h4>
+    <% if (!passes.length) { %><p><small>No active packs. <a href="/buy">Buy one</a></small></p><% } %>
+    <% for (const p of passes) { %>
+      <p><strong><%= p.name %></strong>: <%= p.credits_remaining %>/<%= p.credits_total %> credits left
+      <% if (p.expires_on) { %><small>· expires <%= p.expires_on %></small><% } %></p>
+    <% } %>
+  </section>
+  <section>
+    <h4>Memberships</h4>
+    <% if (!memberships.length) { %><p><small>No active membership.</small></p><% } %>
+    <% for (const m of memberships) { %>
+      <p><strong><%= m.plan_name %></strong> —
+      <%= m.unlimited ? 'unlimited' : `${Math.max(0, (m.credits_per_month || 0) - m.credits_used_this_cycle)} of ${m.credits_per_month} classes left this cycle` %></p>
+    <% } %>
+  </section>
+</div>
+<%- include('../partials/foot') %>

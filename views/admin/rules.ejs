@@ -1,0 +1,71 @@
+<%- include('../partials/head') %>
+<h3>Weekly schedule rules</h3>
+<p><small>Rules materialize into bookable class instances on a rolling 8-week horizon (at boot, daily, and whenever a rule changes).</small></p>
+<% const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; %>
+<details open>
+  <summary role="button" class="outline">Add weekly rule</summary>
+  <form method="post" action="/admin/rules">
+    <div class="grid">
+      <label>Class
+        <select name="class_type_id" required>
+          <% for (const t of types) { %><option value="<%= t.id %>"><%= t.name %></option><% } %>
+        </select>
+      </label>
+      <label>Instructor
+        <select name="instructor_id">
+          <option value="">—</option>
+          <% for (const i of instructors) { %><option value="<%= i.id %>"><%= i.name %></option><% } %>
+        </select>
+      </label>
+      <label>Day
+        <select name="weekday"><% days.forEach((d, idx) => { %><option value="<%= idx %>"><%= d %></option><% }) %></select>
+      </label>
+      <label>Start (HH:MM) <input name="start_time" required pattern="[0-2][0-9]:[0-5][0-9]" placeholder="09:00"></label>
+    </div>
+    <div class="grid">
+      <label>Capacity override <input type="number" name="capacity_override" min="1" placeholder="(class default)"></label>
+      <label>Active from <input type="date" name="active_from"></label>
+      <label>Active until <input type="date" name="active_until"></label>
+    </div>
+    <button>Add rule</button>
+  </form>
+</details>
+<% if (!rules.length) { %><p>No rules yet.</p><% } %>
+<% for (const rule of rules) { %>
+  <details>
+    <summary>
+      <strong><%= days[rule.weekday] %> <%= rule.start_time %></strong> — <%= rule.class_name %>
+      <% if (rule.instructor_name) { %><small>(<%= rule.instructor_name %>)</small><% } %>
+      <%= rule.active ? '' : ' · INACTIVE' %>
+    </summary>
+    <form method="post" action="/admin/rules/<%= rule.id %>">
+      <div class="grid">
+        <label>Class
+          <select name="class_type_id">
+            <% for (const t of types) { %><option value="<%= t.id %>" <%= t.id === rule.class_type_id ? 'selected' : '' %>><%= t.name %></option><% } %>
+          </select>
+        </label>
+        <label>Instructor
+          <select name="instructor_id">
+            <option value="">—</option>
+            <% for (const i of instructors) { %><option value="<%= i.id %>" <%= i.id === rule.instructor_id ? 'selected' : '' %>><%= i.name %></option><% } %>
+          </select>
+        </label>
+        <label>Day
+          <select name="weekday"><% days.forEach((d, idx) => { %><option value="<%= idx %>" <%= idx === rule.weekday ? 'selected' : '' %>><%= d %></option><% }) %></select>
+        </label>
+        <label>Start <input name="start_time" value="<%= rule.start_time %>"></label>
+      </div>
+      <div class="grid">
+        <label>Capacity override <input type="number" name="capacity_override" value="<%= rule.capacity_override || '' %>"></label>
+        <label>Active from <input type="date" name="active_from" value="<%= rule.active_from || '' %>"></label>
+        <label>Active until <input type="date" name="active_until" value="<%= rule.active_until || '' %>"></label>
+      </div>
+      <div class="grid">
+        <button>Save &amp; regenerate</button>
+        <button name="action" value="delete" class="outline secondary" onclick="return confirm('Deactivate this rule? Future empty classes will be removed.')">Deactivate</button>
+      </div>
+    </form>
+  </details>
+<% } %>
+<%- include('../partials/foot') %>

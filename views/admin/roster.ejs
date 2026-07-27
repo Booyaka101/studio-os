@@ -1,0 +1,58 @@
+<%- include('../partials/head') %>
+<hgroup>
+  <h3><%= inst.class_name %> roster</h3>
+  <p><%= fmtDt(inst.starts_at) %> · <%= roster.length %>/<%= inst.capacity %> booked
+     <% if (inst.instructor_name) { %> · <%= inst.instructor_name %><% } %>
+     <% if (inst.status === 'cancelled') { %> · <mark>CANCELLED</mark><% } %></p>
+</hgroup>
+<table>
+  <thead><tr><th>Client</th><th>Paid with</th><th>Status</th><th>Actions</th></tr></thead>
+  <tbody>
+  <% for (const b of roster) { %>
+    <tr>
+      <td><a href="/admin/clients/<%= b.client_id %>"><%= b.client_name %></a><br><small><%= b.email %></small></td>
+      <td><%= b.paid_with.replace(/_/g, ' ') %></td>
+      <td><%= b.status %></td>
+      <td>
+        <form method="post" action="/admin/bookings/<%= b.id %>/status" class="inline-form">
+          <% if (b.status !== 'attended') { %><button name="status" value="attended" class="slim">Check in</button><% } %>
+          <% if (b.status !== 'no_show') { %><button name="status" value="no_show" class="slim outline">No-show</button><% } %>
+          <% if (b.status !== 'booked') { %><button name="status" value="booked" class="slim outline secondary">Undo</button><% } %>
+          <% if (b.status === 'booked') { %><button name="status" value="cancelled" class="slim outline secondary" onclick="return confirm('Cancel this booking?')">Cancel</button><% } %>
+        </form>
+      </td>
+    </tr>
+  <% } %>
+  <% if (!roster.length) { %><tr><td colspan="4">No bookings yet.</td></tr><% } %>
+  </tbody>
+</table>
+<% if (waitlist.length) { %>
+  <h5>Waitlist (<%= waitlist.length %>)</h5>
+  <ol>
+  <% for (const b of waitlist) { %>
+    <li><a href="/admin/clients/<%= b.client_id %>"><%= b.client_name %></a> <small><%= b.email %></small>
+      <form method="post" action="/admin/bookings/<%= b.id %>/status" class="inline-form">
+        <button name="status" value="cancelled" class="slim outline secondary">Remove</button>
+      </form>
+    </li>
+  <% } %>
+  </ol>
+<% } %>
+<details>
+  <summary role="button" class="outline">Add walk-in</summary>
+  <form method="post" action="/admin/instances/<%= inst.id %>/walkin">
+    <div class="grid">
+      <label>Name <input name="name"></label>
+      <label>Email <input type="email" name="email" required></label>
+      <label>Payment
+        <select name="paid_with">
+          <option value="auto">Auto (membership/pack first)</option>
+          <option value="drop_in_manual">Drop-in (pay at studio)</option>
+          <option value="comp">Comp (free)</option>
+        </select>
+      </label>
+    </div>
+    <button>Add to class</button>
+  </form>
+</details>
+<%- include('../partials/foot') %>

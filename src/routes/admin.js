@@ -341,8 +341,9 @@ export default function adminRoutes(services) {
     const plans = db.prepare('SELECT * FROM membership_plans WHERE active = 1').all();
     const packProducts = db.prepare('SELECT * FROM pack_products WHERE active = 1').all();
     const magicUrl = `${services.baseUrl(req)}/me?token=${makeMagicToken(db, client.id)}`;
+    // `client` is a reserved EJS option name — pass as clientInfo.
     res.render('admin/client', {
-      title: client.name, client, bookings, passes, memberships, payments, plans, packProducts, magicUrl,
+      title: client.name, clientInfo: client, bookings, passes, memberships, payments, plans, packProducts, magicUrl,
     });
   });
 

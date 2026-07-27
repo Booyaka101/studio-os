@@ -1,0 +1,149 @@
+<%- include('../partials/head') %>
+<hgroup>
+  <h3><%= clientInfo.name %></h3>
+  <p><%= clientInfo.email %><% if (clientInfo.phone) { %> · <%= clientInfo.phone %><% } %> · source: <%= clientInfo.source %></p>
+</hgroup>
+<div class="grid">
+  <article>
+    <h5>Profile</h5>
+    <form method="post" action="/admin/clients/<%= clientInfo.id %>">
+      <label>Name <input name="name" value="<%= clientInfo.name %>"></label>
+      <label>Phone <input name="phone" value="<%= clientInfo.phone %>"></label>
+      <label>Notes <textarea name="notes" rows="3"><%= clientInfo.notes %></textarea></label>
+      <button class="slim">Save</button>
+    </form>
+    <form method="post" action="/admin/clients/<%= clientInfo.id %>">
+      <input type="hidden" name="action" value="waiver_toggle">
+      <p>Waiver: <strong><%= clientInfo.waiver_signed_at ? `signed ${fmtDt(clientInfo.waiver_signed_at)}` : 'not signed' %></strong>
+      <button class="slim outline"><%= clientInfo.waiver_signed_at ? 'Clear' : 'Mark signed' %></button></p>
+    </form>
+    <p><small>Magic link (share with client): <a href="<%= magicUrl %>">open</a></small></p>
+  </article>
+  <article>
+    <h5>Add pack / membership / payment</h5>
+    <details>
+      <summary>Add class pack</summary>
+      <form method="post" action="/admin/clients/<%= clientInfo.id %>/passes">
+        <% if (packProducts.length) { %>
+        <label>From product
+          <select onchange="const o=this.selectedOptions[0]; if(o.dataset.credits){this.form.name.value=o.text;this.form.credits.value=o.dataset.credits;this.form.price.value=o.dataset.price;this.form.expires_on.value=o.dataset.expires||''}">
+            <option value="">custom…</option>
+            <% for (const pp of packProducts) { %>
+              <option data-credits="<%= pp.credits %>" data-price="<%= (pp.price_cents/100).toFixed(2) %>"><%= pp.name %></option>
+            <% } %>
+          </select>
+        </label>
+        <% } %>
+        <div class="grid">
+          <label>Name <input name="name" placeholder="10-class pack"></label>
+          <label>Credits <input type="number" name="credits" value="10" min="1"></label>
+        </div>
+        <div class="grid">
+          <label>Expires on <input type="date" name="expires_on"></label>
+          <label>Price paid <input type="number" name="price" step="0.01" min="0" value="0"></label>
+          <label>Method
+            <select name="method"><option value="cash">cash</option><option value="fps">FPS</option><option value="other">other</option></select>
+          </label>
+        </div>
+        <label><input type="checkbox" name="record_payment" value="1" checked> Record payment too</label>
+        <button class="slim">Add pack</button>
+      </form>
+    </details>
+    <details>
+      <summary>Add membership</summary>
+      <form method="post" action="/admin/clients/<%= clientInfo.id %>/memberships">
+        <% if (plans.length) { %>
+        <label>Plan
+          <select name="plan_id">
+            <option value="">custom…</option>
+            <% for (const p of plans) { %><option value="<%= p.id %>"><%= p.name %> (<%= fmtMoney(p.price_cents) %>/mo)</option><% } %>
+          </select>
+        </label>
+        <% } %>
+        <div class="grid">
+          <label>Custom name <input name="plan_name" placeholder="Monthly unlimited"></label>
+          <label>Unlimited?
+            <select name="unlimited"><option value="1">Unlimited</option><option value="0">Credit-based</option></select>
+          </label>
+          <label>Credits/month <input type="number" name="credits_per_month" min="1" placeholder="8"></label>
+        </div>
+        <label><input type="checkbox" name="record_payment" value="1"> Record first payment (plan price)</label>
+        <label>Method <select name="method"><option value="cash">cash</option><option value="fps">FPS</option><option value="other">other</option></select></label>
+        <button class="slim">Add membership</button>
+      </form>
+    </details>
+    <details>
+      <summary>Record payment</summary>
+      <form method="post" action="/admin/clients/<%= clientInfo.id %>/payments">
+        <div class="grid">
+          <label>Amount <input type="number" name="amount" step="0.01" min="0" required></label>
+          <label>For
+            <select name="what"><option value="drop_in">drop-in</option><option value="pack">pack</option><option value="membership">membership</option></select>
+          </label>
+          <label>Method
+            <select name="method"><option value="cash">cash</option><option value="fps">FPS</option><option value="stripe">stripe</option><option value="other">other</option></select>
+          </label>
+        </div>
+        <label>Reference <input name="reference"></label>
+        <button class="slim">Record</button>
+      </form>
+    </details>
+  </article>
+</div>
+<div class="grid">
+  <section>
+    <h5>Packs</h5>
+    <% if (!passes.length) { %><p><small>None.</small></p><% } %>
+    <% for (const p of passes) { %>
+      <p class="slim-row"><%= p.name %>: <strong><%= p.credits_remaining %>/<%= p.credits_total %></strong>
+      <% if (p.expires_on) { %><small>exp <%= p.expires_on %></small><% } %> <small>(<%= p.source %>)</small></p>
+    <% } %>
+    <h5>Memberships</h5>
+    <% if (!memberships.length) { %><p><small>None.</small></p><% } %>
+    <% for (const m of memberships) { %>
+      <p class="slim-row"><%= m.plan_name %> — <%= m.status %> ·
+        <%= m.unlimited ? 'unlimited' : `${m.credits_used_this_cycle}/${m.credits_per_month} used` %>
+        <% if (m.status === 'active') { %>
+        <form method="post" action="/admin/clients/<%= clientInfo.id %>/memberships" class="inline-form">
+          <input type="hidden" name="action" value="status"><input type="hidden" name="membership_id" value="<%= m.id %>">
+          <button name="status" value="paused" class="slim outline">Pause</button>
+          <button name="status" value="cancelled" class="slim outline secondary">Cancel</button>
+        </form>
+        <% } else if (m.status === 'paused') { %>
+        <form method="post" action="/admin/clients/<%= clientInfo.id %>/memberships" class="inline-form">
+          <input type="hidden" name="action" value="status"><input type="hidden" name="membership_id" value="<%= m.id %>">
+          <button name="status" value="active" class="slim outline">Resume</button>
+        </form>
+        <% } %>
+      </p>
+    <% } %>
+  </section>
+  <section>
+    <h5>Payments</h5>
+    <% if (!payments.length) { %><p><small>None.</small></p><% } %>
+    <% for (const p of payments) { %>
+      <p class="slim-row"><%= fmtDt(p.created_at) %> · <%= fmtMoney(p.amount_cents) %> · <%= p.what %> (<%= p.method %>)
+      <% if (p.status === 'pending') { %><mark>pending</mark>
+        <form method="post" action="/admin/payments/<%= p.id %>/paid" class="inline-form"><button class="slim">Mark paid</button></form>
+      <% } %></p>
+    <% } %>
+  </section>
+</div>
+<section>
+  <h5>Bookings</h5>
+  <table>
+    <thead><tr><th>When</th><th>Class</th><th>Status</th><th>Paid with</th></tr></thead>
+    <tbody>
+    <% for (const b of bookings) { %>
+      <tr>
+        <td><%= fmtDt(b.starts_at) %></td>
+        <td><a href="/admin/instances/<%= b.class_instance_id %>"><%= b.class_name %></a></td>
+        <td><%= b.status %></td>
+        <td><%= b.paid_with.replace(/_/g, ' ') %></td>
+      </tr>
+    <% } %>
+    <% if (!bookings.length) { %><tr><td colspan="4">No bookings.</td></tr><% } %>
+    </tbody>
+  </table>
+</section>
+<%- include('../partials/foot') %>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> — <%= settings.studio_name || 'Studio OS' %></title>
+  <link rel="stylesheet" href="/vendor/pico.min.css">
+  <link rel="stylesheet" href="/css/custom.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#4f7cac">
+  <script src="/vendor/htmx.min.js" defer></script>
+</head>
+<body>
+<nav class="container">
+  <ul>
+    <li><strong><a href="/" class="brand"><%= settings.studio_name || 'Studio OS' %></a></strong></li>
+  </ul>
+  <ul>
+    <li><a href="/">Schedule</a></li>
+    <li><a href="/buy">Passes</a></li>
+    <li><a href="/magic-link">My bookings</a></li>
+    <% if (user) { %>
+      <li><a href="/admin" role="button" class="outline">Admin</a></li>
+    <% } %>
+  </ul>
+</nav>
+<% if (user && (typeof adminNav !== 'undefined' ? adminNav : true)) { %>
+<nav class="container admin-nav">
+  <ul>
+    <li><a href="/admin">Dashboard</a></li>
+    <li><a href="/admin/schedule">Schedule</a></li>
+    <li><a href="/admin/rules">Rules</a></li>
+    <li><a href="/admin/class-types">Classes</a></li>
+    <li><a href="/admin/instructors">Instructors</a></li>
+    <li><a href="/admin/clients">Clients</a></li>
+    <li><a href="/admin/products">Products</a></li>
+    <li><a href="/admin/reports">Reports</a></li>
+    <li><a href="/admin/import">Import</a></li>
+    <li><a href="/admin/settings">Settings</a></li>
+    <li><form method="post" action="/admin/logout" class="inline-form"><button class="outline secondary slim">Log out</button></form></li>
+  </ul>
+</nav>
+<% } %>
+<main class="container">
+<% if (flash) { %><article class="flash" role="alert"><%= flash %></article><% } %>

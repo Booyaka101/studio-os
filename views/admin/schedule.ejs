@@ -1,0 +1,50 @@
+<%- include('../partials/head') %>
+<h3>Schedule — next 14 days</h3>
+<details>
+  <summary role="button" class="outline">Add one-off class</summary>
+  <form method="post" action="/admin/schedule">
+    <div class="grid">
+      <label>Class
+        <select name="class_type_id" required>
+          <% for (const t of types) { %><option value="<%= t.id %>"><%= t.name %></option><% } %>
+        </select>
+      </label>
+      <label>Instructor
+        <select name="instructor_id"><option value="">—</option>
+          <% for (const i of instructors) { %><option value="<%= i.id %>"><%= i.name %></option><% } %>
+        </select>
+      </label>
+      <label>Date <input type="date" name="date" required></label>
+      <label>Time <input name="time" required pattern="[0-2][0-9]:[0-5][0-9]" placeholder="18:30"></label>
+      <label>Capacity <input type="number" name="capacity" min="1" placeholder="(class default)"></label>
+    </div>
+    <label>Notes <input name="notes"></label>
+    <button>Create class</button>
+  </form>
+</details>
+<%
+  let lastDay = '';
+  for (const inst of instances) {
+    const day = fmtDt(inst.starts_at, { weekday: 'long', day: 'numeric', month: 'long', hour: undefined, minute: undefined });
+%>
+  <% if (day !== lastDay) { lastDay = day; %><h5 class="day-header"><%= day %></h5><% } %>
+  <article class="class-row <%= inst.status === 'cancelled' ? 'cancelled' : '' %>" style="border-left: 6px solid <%= inst.color %>">
+    <div class="grid">
+      <div>
+        <strong><%= fmtDt(inst.starts_at, { weekday: undefined, day: undefined, month: undefined }) %></strong>
+        · <a href="/admin/instances/<%= inst.id %>"><%= inst.class_name %></a>
+        <% if (inst.instructor_name) { %><small>(<%= inst.instructor_name %>)</small><% } %>
+        <% if (inst.status === 'cancelled') { %><mark>cancelled</mark><% } %>
+      </div>
+      <div class="right">
+        <%= inst.booked_count %>/<%= inst.capacity %><% if (inst.waitlist_count) { %> +<%= inst.waitlist_count %> WL<% } %>
+        <% if (inst.status === 'scheduled') { %>
+          <form method="post" action="/admin/instances/<%= inst.id %>/cancel" class="inline-form">
+            <button class="slim outline secondary" onclick="return confirm('Cancel this class? All bookings are refunded and notified.')">Cancel</button>
+          </form>
+        <% } %>
+      </div>
+    </div>
+  </article>
+<% } %>
+<%- include('../partials/foot') %>

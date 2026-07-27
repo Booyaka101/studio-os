@@ -1,0 +1,37 @@
+<%- include('../partials/head', { adminNav: false }) %>
+<hgroup>
+  <h2>Passes &amp; memberships</h2>
+  <p><%= stripeConfigured ? 'Pay securely online, or at the studio.' : 'Purchases are completed at the studio (cash / FPS / bank transfer).' %></p>
+</hgroup>
+<% if (error) { %><p class="flash error" role="alert"><%= error %></p><% } %>
+<div class="grid">
+  <section>
+    <h4>Class packs</h4>
+    <% if (!packs.length) { %><p>No packs available right now.</p><% } %>
+    <% for (const p of packs) { %>
+      <article>
+        <strong><%= p.name %></strong> — <%= fmtMoney(p.price_cents) %>
+        <br><small><%= p.credits %> classes<% if (p.validity_days) { %> · valid <%= p.validity_days %> days<% } %></small>
+        <form method="post" action="/buy/pack/<%= p.id %>">
+          <input type="email" name="email" required placeholder="you@example.com">
+          <button type="submit" class="slim"><%= stripeConfigured ? 'Buy online' : 'Reserve — pay at studio' %></button>
+        </form>
+      </article>
+    <% } %>
+  </section>
+  <section>
+    <h4>Memberships</h4>
+    <% if (!plans.length) { %><p>No membership plans right now.</p><% } %>
+    <% for (const p of plans) { %>
+      <article>
+        <strong><%= p.name %></strong> — <%= fmtMoney(p.price_cents) %>/month
+        <br><small><%= p.unlimited ? 'Unlimited classes' : `${p.credits_per_month} classes per month` %></small>
+        <form method="post" action="/buy/membership/<%= p.id %>">
+          <input type="email" name="email" required placeholder="you@example.com">
+          <button type="submit" class="slim"><%= (stripeConfigured && p.stripe_price_id) ? 'Subscribe online' : 'Reserve — arrange at studio' %></button>
+        </form>
+      </article>
+    <% } %>
+  </section>
+</div>
+<%- include('../partials/foot') %>
