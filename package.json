@@ -28,5 +28,27 @@
   },
   "devDependencies": {
     "supertest": "^7.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Booyaka101/studio-os.git"
+  },
+  "homepage": "https://github.com/Booyaka101/studio-os#readme",
+  "bugs": {
+    "url": "https://github.com/Booyaka101/studio-os/issues"
+  },
+  "keywords": [
+    "self-hosted",
+    "studio",
+    "yoga",
+    "pilates",
+    "gym",
+    "booking",
+    "class-packs",
+    "memberships",
+    "mindbody-alternative",
+    "stripe",
+    "scheduling",
+    "fitness"
+  ]
 }
