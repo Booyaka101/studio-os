@@ -15,8 +15,9 @@ Run tests: `npm test`. Start: `npm start` (PORT env, default 3000).
 - [x] Admin routes + full EJS UI (public + admin), PWA assets (manifest, sw.js, custom.css), 16 supertest web tests (commits 897ad8e, 7449c52)
 - [x] Mindbody importer: `src/services/importer.js` (CSV parser, mapping defaults + overrides, idempotent by email), `scripts/import-mindbody.mjs` CLI (--clients/--passes/--mapping/--db/--dry-run), realistic fixtures `test/fixtures/mindbody-{clients,passes}.csv` (edge cases: missing email, quoted commas, uppercase email, malformed row), admin `/admin/import` page wired, 8 importer tests + 1 web test (56 total green)
 
+- [x] Stripe webhook tests `test/stripe.test.js` (11 tests, mock client, no network): signature reject, pack/membership/drop-in fulfillment, replay idempotency, subscription cancel, 500-retry on unknown product, checkout session params (67 total green)
+
 ## Next (exact order)
-6. Stripe webhook tests (mock client, no network)
 7. `scripts/seed.mjs`, Dockerfile, docker-compose.yml, README.md, CHANGELOG.md
 8. Self-verify: npm test green; boot on free PORT; curl setup → schedule → booking round-trip with seeded data; record transcript summary here
 
