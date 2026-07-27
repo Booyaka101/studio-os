@@ -18,9 +18,18 @@ Run tests: `npm test`. Start: `npm start` (PORT env, default 3000).
 - [x] Stripe webhook tests `test/stripe.test.js` (11 tests, mock client, no network): signature reject, pack/membership/drop-in fulfillment, replay idempotency, subscription cancel, 500-retry on unknown product, checkout session params (67 total green)
 - [x] `scripts/seed.mjs` (demo studio: 3 instructors, 4 class types, 8 weekly rules → 64 instances, products, 4 clients w/ passes+membership, 2×2 demo bookings; refuses non-empty DB without --force; login owner@example.com/studio-demo), Dockerfile (node:22-slim, VOLUME /app/data) + .dockerignore + docker-compose.yml (studio-data volume), README.md (quickstart Docker+Node, Mindbody migration guide, Stripe guide, limitations, roadmap), CHANGELOG.md. NOTE: docker build not run locally ($0/no-network guardrail) — image untested.
 
-## Next (exact order)
-7. `scripts/seed.mjs`, Dockerfile, docker-compose.yml, README.md, CHANGELOG.md
-8. Self-verify: npm test green; boot on free PORT; curl setup → schedule → booking round-trip with seeded data; record transcript summary here
+## Self-verification (2026-07-27, item 8) — ALL PASSED
+Live server on PORT=3791, DB_PATH=data/verify-studio.db (deleted after), Node v22.18.0:
+1. `npm test` → **67/67 pass, 0 fail** (booking 21 + schedule 10 + web 17 + importer 8 + stripe 11).
+2. Fresh empty DB boot: `GET /` → 302 `Location: /setup`; `GET /setup` → 200 "Welcome to Studio OS".
+3. `node scripts/seed.mjs` → 3 instructors, 4 class types, 8 rules → 64 instances, products, 4 clients, 4 demo bookings. Re-run without `--force` correctly refused (exit 1).
+4. Seeded boot: `GET /` → 200; schedule lists 20 upcoming instances (Vinyasa/Pilates/Handstand/Yin) with "spots left".
+5. Booking round-trip: `POST /class/33/book` (new guest, waiver_agree=1) → 200 "Booked"; duplicate re-POST did NOT create a second booking; admin login (`POST /admin/login` → 302) then `GET /admin/instances/33` roster shows the client, paid_with `drop_in_manual` ("pay at studio"), check-in buttons.
+6. Magic-link cancel: `POST /magic-link` → on-screen `/me?token=...` (SMTP off); `GET /me?token` → 200 listing the booking; `POST /me/cancel/5` → 302 back to /me, flash "cancelled", list empty; DB row: status='cancelled', cancelled_at set; roster no longer shows the client.
+7. Server stopped cleanly. NOT verified: `docker build` ($0/no-network guardrail — Dockerfile untested).
+
+## Next
+- v0.1 complete. Optional: run `docker compose up` once network use is allowed; add screenshots to README.
 
 ## Pragmatic choices where SPEC is silent (decided, noted per guardrail)
 - **pack_products table added** (schema v1): SPEC's buy page sells "class packs" but only defines per-client `passes`; a purchasable catalogue was needed. Same for drop-in pending payments → `payments.status` ('paid'|'pending').
