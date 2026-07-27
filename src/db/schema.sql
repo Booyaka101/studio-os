@@ -95,6 +95,18 @@ CREATE TABLE IF NOT EXISTS membership_plans (
   active            INTEGER NOT NULL DEFAULT 1
 );
 
+-- Purchasable class-pack products shown on the buy page (SPEC is silent on a
+-- pack catalogue; passes are per-client, so products live here).
+CREATE TABLE IF NOT EXISTS pack_products (
+  id              INTEGER PRIMARY KEY,
+  name            TEXT NOT NULL,
+  credits         INTEGER NOT NULL,
+  price_cents     INTEGER NOT NULL DEFAULT 0,
+  validity_days   INTEGER,                    -- NULL = never expires
+  stripe_price_id TEXT,
+  active          INTEGER NOT NULL DEFAULT 1
+);
+
 CREATE TABLE IF NOT EXISTS memberships (
   id                      INTEGER PRIMARY KEY,
   client_id               INTEGER NOT NULL REFERENCES clients(id),
