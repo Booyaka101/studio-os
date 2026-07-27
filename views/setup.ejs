@@ -14,7 +14,7 @@
     <p>Two minutes of setup and your studio is online.</p>
   </hgroup>
   <% if (error) { %><article class="flash error" role="alert"><%= error %></article><% } %>
-  <form method="post" action="/setup">
+  <form method="post" action="/setup"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label>Studio name
       <input name="studio_name" required placeholder="Harbour Yoga" value="<%= form.studio_name || '' %>">
     </label>

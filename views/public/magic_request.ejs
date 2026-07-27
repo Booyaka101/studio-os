@@ -12,7 +12,7 @@
     <% } %>
   <% } else { %>
     <p>Enter your email and we'll give you a secure link to view and manage your bookings. No password needed.</p>
-    <form method="post" action="/magic-link">
+    <form method="post" action="/magic-link"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <label>Email <input type="email" name="email" required placeholder="you@example.com"></label>
       <button type="submit">Send me my link</button>
     </form>

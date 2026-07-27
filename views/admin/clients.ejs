@@ -6,7 +6,7 @@
 </form>
 <details <%= clients.length ? '' : 'open' %>>
   <summary role="button" class="outline">Add client</summary>
-  <form method="post" action="/admin/clients">
+  <form method="post" action="/admin/clients"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid">
       <label>Name <input name="name"></label>
       <label>Email <input type="email" name="email" required></label>

@@ -46,6 +46,14 @@ export function makeMembership(db, clientId, { unlimited = true, creditsPerMonth
   ).run(clientId, status, startedOn, unlimited ? 1 : 0, creditsPerMonth, startedOn).lastInsertRowid;
 }
 
+/** GET a page with a cookie-persisting supertest agent and pull the CSRF token out of its form HTML. */
+export async function csrfToken(agent, url) {
+  const res = await agent.get(url);
+  const m = res.text.match(/name="_csrf" value="([^"]+)"/);
+  if (!m) throw new Error(`no CSRF token found on ${url} (status ${res.status})`);
+  return m[1];
+}
+
 export const getPass = (db, id) => db.prepare('SELECT * FROM passes WHERE id = ?').get(id);
 export const getBooking = (db, id) => db.prepare('SELECT * FROM bookings WHERE id = ?').get(id);
 export const getMembership = (db, id) => db.prepare('SELECT * FROM memberships WHERE id = ?').get(id);

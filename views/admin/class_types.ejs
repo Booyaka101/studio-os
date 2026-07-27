@@ -2,7 +2,7 @@
 <h3>Class types</h3>
 <details open>
   <summary role="button" class="outline">Add class type</summary>
-  <form method="post" action="/admin/class-types">
+  <form method="post" action="/admin/class-types"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid">
       <label>Name <input name="name" required></label>
       <label>Color <input type="color" name="color" value="#4f7cac"></label>
@@ -23,7 +23,7 @@
       <strong><%= t.name %></strong> · <%= t.duration_min %>min · cap <%= t.capacity %> · <%= fmtMoney(t.drop_in_price_cents) %> drop-in
       <%= t.active ? '' : ' · INACTIVE' %>
     </summary>
-    <form method="post" action="/admin/class-types/<%= t.id %>">
+    <form method="post" action="/admin/class-types/<%= t.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">">
       <div class="grid">
         <label>Name <input name="name" value="<%= t.name %>" required></label>
         <label>Color <input type="color" name="color" value="<%= t.color %>"></label>

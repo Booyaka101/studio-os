@@ -15,7 +15,7 @@
           <% if (b.status === 'waitlist') { %><mark>waitlist</mark><% } %>
         </div>
         <div class="right">
-          <form method="post" action="/me/cancel/<%= b.id %>">
+          <form method="post" action="/me/cancel/<%= b.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">">
             <input type="hidden" name="token" value="<%= token %>">
             <button class="slim outline secondary"
               onclick="return confirm('Cancel this booking?')">Cancel</button>

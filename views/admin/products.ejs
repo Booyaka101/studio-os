@@ -5,7 +5,7 @@
     <h4>Class packs (buy page)</h4>
     <details open>
       <summary role="button" class="outline">Add pack product</summary>
-      <form method="post" action="/admin/products/pack">
+      <form method="post" action="/admin/products/pack"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="grid">
           <label>Name <input name="name" required placeholder="10-class pack"></label>
           <label>Credits <input type="number" name="credits" value="10" min="1"></label>
@@ -21,7 +21,7 @@
     <% for (const p of packs) { %>
       <details>
         <summary><strong><%= p.name %></strong> · <%= p.credits %> credits · <%= fmtMoney(p.price_cents) %><%= p.active ? '' : ' · INACTIVE' %></summary>
-        <form method="post" action="/admin/products/pack/<%= p.id %>">
+        <form method="post" action="/admin/products/pack/<%= p.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">">
           <div class="grid">
             <label>Name <input name="name" value="<%= p.name %>"></label>
             <label>Credits <input type="number" name="credits" value="<%= p.credits %>"></label>
@@ -41,7 +41,7 @@
     <h4>Membership plans</h4>
     <details open>
       <summary role="button" class="outline">Add plan</summary>
-      <form method="post" action="/admin/products/plan">
+      <form method="post" action="/admin/products/plan"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="grid">
           <label>Name <input name="name" required placeholder="Monthly unlimited"></label>
           <label>Price/month <input type="number" name="price" step="0.01" min="0" required></label>
@@ -59,7 +59,7 @@
     <% for (const p of plans) { %>
       <details>
         <summary><strong><%= p.name %></strong> · <%= fmtMoney(p.price_cents) %>/mo · <%= p.unlimited ? 'unlimited' : `${p.credits_per_month}/mo` %><%= p.active ? '' : ' · INACTIVE' %></summary>
-        <form method="post" action="/admin/products/plan/<%= p.id %>">
+        <form method="post" action="/admin/products/plan/<%= p.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">">
           <div class="grid">
             <label>Name <input name="name" value="<%= p.name %>"></label>
             <label>Price <input type="number" name="price" step="0.01" value="<%= (p.price_cents/100).toFixed(2) %>"></label>

@@ -2,7 +2,7 @@
 <h3>Schedule — next 14 days</h3>
 <details>
   <summary role="button" class="outline">Add one-off class</summary>
-  <form method="post" action="/admin/schedule">
+  <form method="post" action="/admin/schedule"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid">
       <label>Class
         <select name="class_type_id" required>
@@ -39,7 +39,7 @@
       <div class="right">
         <%= inst.booked_count %>/<%= inst.capacity %><% if (inst.waitlist_count) { %> +<%= inst.waitlist_count %> WL<% } %>
         <% if (inst.status === 'scheduled') { %>
-          <form method="post" action="/admin/instances/<%= inst.id %>/cancel" class="inline-form">
+          <form method="post" action="/admin/instances/<%= inst.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/cancel" class="inline-form">
             <button class="slim outline secondary" onclick="return confirm('Cancel this class? All bookings are refunded and notified.')">Cancel</button>
           </form>
         <% } %>

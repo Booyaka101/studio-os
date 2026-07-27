@@ -2,7 +2,7 @@
 <h3>Instructors</h3>
 <details open>
   <summary role="button" class="outline">Add instructor</summary>
-  <form method="post" action="/admin/instructors">
+  <form method="post" action="/admin/instructors"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid">
       <label>Name <input name="name" required></label>
       <label>Bio <input name="bio"></label>
@@ -13,7 +13,7 @@
 <% for (const i of instructors) { %>
   <details>
     <summary><strong><%= i.name %></strong><%= i.active ? '' : ' · INACTIVE' %></summary>
-    <form method="post" action="/admin/instructors/<%= i.id %>">
+    <form method="post" action="/admin/instructors/<%= i.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">">
       <div class="grid">
         <label>Name <input name="name" value="<%= i.name %>" required></label>
         <label>Bio <input name="bio" value="<%= i.bio %>"></label>

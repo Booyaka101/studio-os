@@ -3,7 +3,7 @@
 <p><small>Export from Mindbody (Reports → Clients / Pricing Options), open the CSV in a text editor and paste it below.
 Re-running is safe: existing clients are matched by email and updated, never duplicated.
 You can also use the CLI: <code>npm run import-mindbody -- --clients file.csv --dry-run</code></small></p>
-<form method="post" action="/admin/import">
+<form method="post" action="/admin/import"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <div class="grid">
     <label>What are you importing?
       <select name="kind">

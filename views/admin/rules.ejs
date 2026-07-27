@@ -4,7 +4,7 @@
 <% const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; %>
 <details open>
   <summary role="button" class="outline">Add weekly rule</summary>
-  <form method="post" action="/admin/rules">
+  <form method="post" action="/admin/rules"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid">
       <label>Class
         <select name="class_type_id" required>
@@ -38,7 +38,7 @@
       <% if (rule.instructor_name) { %><small>(<%= rule.instructor_name %>)</small><% } %>
       <%= rule.active ? '' : ' · INACTIVE' %>
     </summary>
-    <form method="post" action="/admin/rules/<%= rule.id %>">
+    <form method="post" action="/admin/rules/<%= rule.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">">
       <div class="grid">
         <label>Class
           <select name="class_type_id">

@@ -28,15 +28,18 @@ Live server on PORT=3791, DB_PATH=data/verify-studio.db (deleted after), Node v2
 6. Magic-link cancel: `POST /magic-link` → on-screen `/me?token=...` (SMTP off); `GET /me?token` → 200 listing the booking; `POST /me/cancel/5` → 302 back to /me, flash "cancelled", list empty; DB row: status='cancelled', cancelled_at set; roster no longer shows the client.
 7. Server stopped cleanly. NOT verified: `docker build` ($0/no-network guardrail — Dockerfile untested).
 
+## Hardening pass (2026-07-28)
+- [x] CSRF protection: random per-session token stored in the cookie-session, exposed as `res.locals.csrfToken`, hidden `_csrf` input added to all 36 POST forms (public book/buy/magic-link, /me cancel, setup, admin login/logout and every admin form). Middleware in `src/app.js` rejects POST/PUT/DELETE/PATCH with missing/mismatched token (403, timing-safe compare; `x-csrf-token` header also accepted). `/webhooks/stripe` exempt (mounted before the session layer + explicit path guard; authenticated by Stripe signature instead). Tests updated to cookie agents + `csrfToken()` helper; 2 explicit tests (no/wrong token → 403 + nothing written; valid token works; webhook stays exempt). 69/69 green.
+
 ## Next
-- v0.1 complete. Optional: run `docker compose up` once network use is allowed; add screenshots to README.
+- Rate limiting (in progress), Docker verification. Optional: screenshots for README.
 
 ## Pragmatic choices where SPEC is silent (decided, noted per guardrail)
 - **pack_products table added** (schema v1): SPEC's buy page sells "class packs" but only defines per-client `passes`; a purchasable catalogue was needed. Same for drop-in pending payments → `payments.status` ('paid'|'pending').
 - **Waitlisted bookings do not deduct credits**; deduction happens at promotion (same tx), payment re-resolved at promotion time.
 - **Drop-in online**: booking is created immediately; payment row pending; Stripe checkout (kind=drop_in metadata) marks it paid via webhook. Capacity is not held hostage to checkout completion.
 - **Sessions**: cookie-session (signed cookie) — SPEC allows either. app_secret auto-generated into settings, overridable via APP_SECRET env.
-- No CSRF tokens in v0.1 (same-site=lax cookies); listed in README limitations.
+- ~~No CSRF tokens in v0.1 (same-site=lax cookies); listed in README limitations.~~ Added in the 2026-07-28 hardening pass (session-bound `_csrf` token, no csurf dependency).
 - `npm test` uses glob `"test/*.test.js"` — `node --test test/` breaks under Git Bash path mangling on Windows.
 
 ## How to resume

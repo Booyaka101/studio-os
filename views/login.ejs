@@ -2,7 +2,7 @@
 <article class="narrow">
   <h2>Staff login</h2>
   <% if (error) { %><p class="flash error" role="alert"><%= error %></p><% } %>
-  <form method="post" action="/admin/login">
+  <form method="post" action="/admin/login"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label>Email <input type="email" name="email" required autofocus></label>
     <label>Password <input type="password" name="password" required></label>
     <button type="submit">Log in</button>

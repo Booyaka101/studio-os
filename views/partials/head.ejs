@@ -37,7 +37,7 @@
     <li><a href="/admin/reports">Reports</a></li>
     <li><a href="/admin/import">Import</a></li>
     <li><a href="/admin/settings">Settings</a></li>
-    <li><form method="post" action="/admin/logout" class="inline-form"><button class="outline secondary slim">Log out</button></form></li>
+    <li><form method="post" action="/admin/logout" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="outline secondary slim">Log out</button></form></li>
   </ul>
 </nav>
 <% } %>

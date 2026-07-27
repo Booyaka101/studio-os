@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **CSRF protection**: session-bound random token (stored in the signed
+  cookie-session, no deprecated `csurf` dependency), hidden `_csrf` input on
+  every state-changing form (public booking/buy/magic-link, client cancel,
+  setup wizard, admin login and all admin forms); POST/PUT/DELETE/PATCH
+  without a valid token → 403. `/webhooks/stripe` exempt (Stripe-signature
+  verified raw body instead). `x-csrf-token` header accepted as an
+  alternative to the form field.
+
 ## 0.1.0 — 2026-07-27
 
 First release. Single-studio, self-hosted, bring-your-own Stripe.

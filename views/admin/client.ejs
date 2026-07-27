@@ -6,13 +6,13 @@
 <div class="grid">
   <article>
     <h5>Profile</h5>
-    <form method="post" action="/admin/clients/<%= clientInfo.id %>">
+    <form method="post" action="/admin/clients/<%= clientInfo.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">">
       <label>Name <input name="name" value="<%= clientInfo.name %>"></label>
       <label>Phone <input name="phone" value="<%= clientInfo.phone %>"></label>
       <label>Notes <textarea name="notes" rows="3"><%= clientInfo.notes %></textarea></label>
       <button class="slim">Save</button>
     </form>
-    <form method="post" action="/admin/clients/<%= clientInfo.id %>">
+    <form method="post" action="/admin/clients/<%= clientInfo.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">">
       <input type="hidden" name="action" value="waiver_toggle">
       <p>Waiver: <strong><%= clientInfo.waiver_signed_at ? `signed ${fmtDt(clientInfo.waiver_signed_at)}` : 'not signed' %></strong>
       <button class="slim outline"><%= clientInfo.waiver_signed_at ? 'Clear' : 'Mark signed' %></button></p>
@@ -23,7 +23,7 @@
     <h5>Add pack / membership / payment</h5>
     <details>
       <summary>Add class pack</summary>
-      <form method="post" action="/admin/clients/<%= clientInfo.id %>/passes">
+      <form method="post" action="/admin/clients/<%= clientInfo.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/passes">
         <% if (packProducts.length) { %>
         <label>From product
           <select onchange="const o=this.selectedOptions[0]; if(o.dataset.credits){this.form.name.value=o.text;this.form.credits.value=o.dataset.credits;this.form.price.value=o.dataset.price;this.form.expires_on.value=o.dataset.expires||''}">
@@ -51,7 +51,7 @@
     </details>
     <details>
       <summary>Add membership</summary>
-      <form method="post" action="/admin/clients/<%= clientInfo.id %>/memberships">
+      <form method="post" action="/admin/clients/<%= clientInfo.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/memberships">
         <% if (plans.length) { %>
         <label>Plan
           <select name="plan_id">
@@ -74,7 +74,7 @@
     </details>
     <details>
       <summary>Record payment</summary>
-      <form method="post" action="/admin/clients/<%= clientInfo.id %>/payments">
+      <form method="post" action="/admin/clients/<%= clientInfo.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/payments">
         <div class="grid">
           <label>Amount <input type="number" name="amount" step="0.01" min="0" required></label>
           <label>For
@@ -104,13 +104,13 @@
       <p class="slim-row"><%= m.plan_name %> — <%= m.status %> ·
         <%= m.unlimited ? 'unlimited' : `${m.credits_used_this_cycle}/${m.credits_per_month} used` %>
         <% if (m.status === 'active') { %>
-        <form method="post" action="/admin/clients/<%= clientInfo.id %>/memberships" class="inline-form">
+        <form method="post" action="/admin/clients/<%= clientInfo.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/memberships" class="inline-form">
           <input type="hidden" name="action" value="status"><input type="hidden" name="membership_id" value="<%= m.id %>">
           <button name="status" value="paused" class="slim outline">Pause</button>
           <button name="status" value="cancelled" class="slim outline secondary">Cancel</button>
         </form>
         <% } else if (m.status === 'paused') { %>
-        <form method="post" action="/admin/clients/<%= clientInfo.id %>/memberships" class="inline-form">
+        <form method="post" action="/admin/clients/<%= clientInfo.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/memberships" class="inline-form">
           <input type="hidden" name="action" value="status"><input type="hidden" name="membership_id" value="<%= m.id %>">
           <button name="status" value="active" class="slim outline">Resume</button>
         </form>
@@ -124,7 +124,7 @@
     <% for (const p of payments) { %>
       <p class="slim-row"><%= fmtDt(p.created_at) %> · <%= fmtMoney(p.amount_cents) %> · <%= p.what %> (<%= p.method %>)
       <% if (p.status === 'pending') { %><mark>pending</mark>
-        <form method="post" action="/admin/payments/<%= p.id %>/paid" class="inline-form"><button class="slim">Mark paid</button></form>
+        <form method="post" action="/admin/payments/<%= p.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/paid" class="inline-form"><button class="slim">Mark paid</button></form>
       <% } %></p>
     <% } %>
   </section>

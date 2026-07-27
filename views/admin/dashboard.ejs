@@ -37,7 +37,7 @@
     <% for (const p of pendingPayments) { %>
       <article class="slim-row">
         <%= p.client_name || 'Unknown' %> · <%= fmtMoney(p.amount_cents) %> <small>(<%= p.what %>)</small>
-        <form method="post" action="/admin/payments/<%= p.id %>/paid" class="inline-form">
+        <form method="post" action="/admin/payments/<%= p.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/paid" class="inline-form">
           <select name="method" class="slim-select"><option value="cash">cash</option><option value="fps">FPS</option><option value="other">other</option></select>
           <button class="slim">Mark paid</button>
         </form>

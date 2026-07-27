@@ -1,5 +1,6 @@
 import express from 'express';
 import cookieSession from 'cookie-session';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getSetting, allSettings } from './db/index.js';
@@ -67,6 +68,27 @@ export function createApp({ db, mailer, stripeService, env = process.env }) {
     res.locals.smtpConfigured = services.mailer.smtpConfigured;
     res.locals.flash = req.session ? req.session.flash : null;
     if (req.session) delete req.session.flash;
+    next();
+  });
+
+  // CSRF protection: a random per-session token lives in the signed cookie
+  // session and must be echoed back (hidden `_csrf` input or `x-csrf-token`
+  // header) on every state-changing request. /webhooks/stripe is exempt — it
+  // is mounted before this middleware and authenticated by Stripe signature.
+  app.use((req, res, next) => {
+    if (!req.session.csrf) req.session.csrf = crypto.randomBytes(24).toString('hex');
+    res.locals.csrfToken = req.session.csrf;
+    if (!['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) return next();
+    if (req.path.startsWith('/webhooks/')) return next();
+    const sent = (req.body && req.body._csrf) || req.get('x-csrf-token') || '';
+    const a = Buffer.from(String(sent));
+    const b = Buffer.from(req.session.csrf);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return res.status(403).render('error', {
+        title: 'Session expired',
+        message: 'Your form session expired or the security token was missing. Please go back, refresh the page, and try again.',
+      });
+    }
     next();
   });
 

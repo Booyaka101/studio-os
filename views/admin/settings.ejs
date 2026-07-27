@@ -1,6 +1,6 @@
 <%- include('../partials/head') %>
 <h3>Settings</h3>
-<form method="post" action="/admin/settings">
+<form method="post" action="/admin/settings"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <div class="grid">
     <label>Studio name <input name="studio_name" value="<%= settings.studio_name %>"></label>
     <label>Timezone <input name="timezone" value="<%= settings.timezone %>" placeholder="Asia/Hong_Kong"></label>
@@ -40,7 +40,7 @@
 <% if (user && user.role === 'owner') { %>
 <article>
   <h5>Add staff account</h5>
-  <form method="post" action="/admin/staff">
+  <form method="post" action="/admin/staff"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid">
       <label>Name <input name="name"></label>
       <label>Email <input type="email" name="email" required></label>
