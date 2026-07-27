@@ -5,18 +5,21 @@ services:
       - "3000:3000"
     volumes:
       - studio-data:/app/data
-    environment:
-      # Everything is optional — see .env.example. Uncomment what you use.
-      #- BASE_URL=https://booking.example.com
-      #- APP_SECRET=change-me
-      #- SMTP_HOST=smtp.example.com
-      #- SMTP_PORT=587
-      #- SMTP_USER=user
-      #- SMTP_PASS=pass
-      #- SMTP_FROM=My Studio <noreply@example.com>
-      #- STRIPE_SECRET_KEY=sk_live_...
-      #- STRIPE_WEBHOOK_SECRET=whsec_...
-      #- STRIPE_PUBLISHABLE_KEY=pk_live_...
+    # Everything is optional — see .env.example. Uncomment the block and the
+    # variables you use. (An `environment:` key with only comments under it is
+    # invalid YAML for compose — keep the key commented until you need it.)
+    #environment:
+    #  BASE_URL: https://booking.example.com
+    #  APP_SECRET: change-me
+    #  TRUST_PROXY: "1"
+    #  SMTP_HOST: smtp.example.com
+    #  SMTP_PORT: "587"
+    #  SMTP_USER: user
+    #  SMTP_PASS: pass
+    #  SMTP_FROM: My Studio <noreply@example.com>
+    #  STRIPE_SECRET_KEY: sk_live_...
+    #  STRIPE_WEBHOOK_SECRET: whsec_...
+    #  STRIPE_PUBLISHABLE_KEY: pk_live_...
     restart: unless-stopped
 
 volumes:

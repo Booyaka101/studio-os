@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Docker verified end-to-end**: `docker compose build && up -d` → setup
+  wizard, admin class creation, public schedule and a guest booking all
+  exercised against the running container, then `down -v`. Fixed
+  `docker-compose.yml`: an `environment:` key with only commented entries is
+  invalid YAML for compose ("must be a mapping") — the example block is now
+  fully commented out.
 - **Rate limiting**: dependency-free in-memory fixed-window limiter
   (`src/lib/ratelimit.js`), keyed per client IP + route: magic-link requests
   5/15 min, admin login 10/15 min, public booking/buy POSTs 30/15 min;

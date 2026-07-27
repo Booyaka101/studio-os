@@ -31,7 +31,18 @@ docker compose up -d
 ```
 
 The database persists in the `studio-data` volume. Configure SMTP/Stripe by
-uncommenting environment lines in `docker-compose.yml`.
+uncommenting the `environment:` block in `docker-compose.yml`.
+
+Verified end-to-end (Docker Engine 28.x, linux/amd64, `node:22-slim` base —
+better-sqlite3 uses its prebuilt glibc binary, no compiler stage needed):
+
+```sh
+docker compose build
+docker compose up -d
+curl -i http://localhost:3000/   # 302 → /setup on a fresh volume
+# setup wizard → admin one-off class → public schedule → guest booking: all OK
+docker compose down -v           # stop + remove the data volume
+```
 
 ### Bare Node (Node 20+)
 
