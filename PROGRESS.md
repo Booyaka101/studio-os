@@ -31,8 +31,10 @@ Live server on PORT=3791, DB_PATH=data/verify-studio.db (deleted after), Node v2
 ## Hardening pass (2026-07-28)
 - [x] CSRF protection: random per-session token stored in the cookie-session, exposed as `res.locals.csrfToken`, hidden `_csrf` input added to all 36 POST forms (public book/buy/magic-link, /me cancel, setup, admin login/logout and every admin form). Middleware in `src/app.js` rejects POST/PUT/DELETE/PATCH with missing/mismatched token (403, timing-safe compare; `x-csrf-token` header also accepted). `/webhooks/stripe` exempt (mounted before the session layer + explicit path guard; authenticated by Stripe signature instead). Tests updated to cookie agents + `csrfToken()` helper; 2 explicit tests (no/wrong token → 403 + nothing written; valid token works; webhook stays exempt). 69/69 green.
 
+- [x] Rate limiting: `src/lib/ratelimit.js` (dependency-free in-memory fixed window, key = client IP + matched route pattern, injectable clock, X-Forwarded-For honored only when `TRUST_PROXY` env set). Wired in `src/app.js` before the CSRF check: `/magic-link` 5/15min, `/admin/login` 10/15min, booking/buy POSTs (`/class/:id/book`, `/buy/pack/:id`, `/buy/membership/:id`) 30/15min → friendly 429 + Retry-After. 4 tests in `test/ratelimit.test.js` (trigger, window reset via fake clock — no sleeps, XFF spoof/trust behavior). README limitations updated → new Security section; `TRUST_PROXY` documented in `.env.example`. 73/73 green. NOTE: limiter is per-process and resets on restart (documented).
+
 ## Next
-- Rate limiting (in progress), Docker verification. Optional: screenshots for README.
+- Docker verification. Optional: screenshots for README.
 
 ## Pragmatic choices where SPEC is silent (decided, noted per guardrail)
 - **pack_products table added** (schema v1): SPEC's buy page sells "class packs" but only defines per-client `passes`; a purchasable catalogue was needed. Same for drop-in pending payments → `payments.status` ('paid'|'pending').

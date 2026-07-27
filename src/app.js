@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getSetting, allSettings } from './db/index.js';
 import { formatInTz } from './lib/time.js';
+import { createRateLimiter } from './lib/ratelimit.js';
 import { createMailer } from './services/mailer.js';
 import { createStripeService } from './services/stripe.js';
 import setupRoutes from './routes/setup.js';
@@ -18,9 +19,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Build the Express app. Dependencies are injectable for tests:
- * createApp({ db, mailer?, stripeService?, env? })
+ * createApp({ db, mailer?, stripeService?, env?, now? })
+ * `now` (clock) is used by the rate limiters so tests can move time.
  */
-export function createApp({ db, mailer, stripeService, env = process.env }) {
+export function createApp({ db, mailer, stripeService, env = process.env, now = Date.now }) {
   const app = express();
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '..', 'views'));
@@ -70,6 +72,22 @@ export function createApp({ db, mailer, stripeService, env = process.env }) {
     if (req.session) delete req.session.flash;
     next();
   });
+
+  // Rate limiting (before CSRF so hammering can't even probe tokens):
+  // in-memory fixed window, per IP + route. Single-process; resets on restart.
+  const RL_WINDOW = 15 * 60 * 1000;
+  app.post('/magic-link', createRateLimiter({
+    windowMs: RL_WINDOW, max: 5, env, now,
+    message: 'Too many link requests — please wait 15 minutes and try again.',
+  }));
+  app.post('/admin/login', createRateLimiter({
+    windowMs: RL_WINDOW, max: 10, env, now,
+    message: 'Too many login attempts — please wait 15 minutes and try again.',
+  }));
+  app.post(['/class/:id/book', '/buy/pack/:id', '/buy/membership/:id'], createRateLimiter({
+    windowMs: RL_WINDOW, max: 30, env, now,
+    message: 'Too many booking attempts from your address — please wait a few minutes and try again.',
+  }));
 
   // CSRF protection: a random per-session token lives in the signed cookie
   // session and must be echoed back (hidden `_csrf` input or `x-csrf-token`

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Rate limiting**: dependency-free in-memory fixed-window limiter
+  (`src/lib/ratelimit.js`), keyed per client IP + route: magic-link requests
+  5/15 min, admin login 10/15 min, public booking/buy POSTs 30/15 min;
+  friendly 429 with `Retry-After`. `X-Forwarded-For` is honored only when
+  `TRUST_PROXY` is set. Single-process counters (reset on restart) — see the
+  new README Security section.
 - **CSRF protection**: session-bound random token (stored in the signed
   cookie-session, no deprecated `csurf` dependency), hidden `_csrf` input on
   every state-changing form (public booking/buy/magic-link, client cancel,

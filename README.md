@@ -138,6 +138,30 @@ booking confirmations, cancellation notices, waitlist promotions and magic
 links. Without SMTP, every email is written to `data/outbox/` as a `.eml` file
 and magic links are shown directly in the UI — everything remains testable.
 
+## Security
+
+What's protected out of the box:
+
+- **CSRF**: every state-changing form carries a session-bound token; POSTs
+  without a valid token get a 403. The Stripe webhook is exempt — it is
+  authenticated by Stripe's signature over the raw body instead.
+- **Rate limiting** (in-memory fixed window, per IP + route): magic-link
+  requests 5/15 min, admin login 10/15 min, public booking/buy POSTs
+  30/15 min. Over the limit → friendly 429. Behind a reverse proxy, set
+  `TRUST_PROXY=1` so limits key on the first `X-Forwarded-For` hop; without
+  it that header is ignored (it's spoofable).
+- Passwords are bcrypt-hashed; client self-service uses expiring HMAC-signed
+  magic links (no client passwords); sessions are signed `SameSite=Lax`
+  `HttpOnly` cookies; webhook fulfillment is idempotent.
+
+What's *not* there yet — plan accordingly:
+
+- **No 2FA** on staff logins.
+- The rate limiter is **single-instance and in-memory**: counters are
+  per-process and reset on restart. Fine for the one-container target; a
+  multi-instance deployment needs a shared store (or limit at the proxy).
+- **HTTPS is your reverse proxy's job** — run behind Caddy/Traefik/nginx.
+
 ## Backups
 
 Admin → Settings → **Download backup** produces a consistent snapshot via
@@ -166,11 +190,8 @@ Stripe webhook fulfillment against a mock client.
 ## Honest v0.1 limitations
 
 - **Single studio, single location, one timezone.**
-- **No CSRF tokens** — sessions are `SameSite=Lax` cookies which blocks basic
-  cross-site POSTs, but don't embed the admin behind third-party pages.
-- **No rate limiting** — put it behind a reverse proxy (Caddy/nginx) if exposed;
-  magic-link tokens are HMAC-signed and expire, but login has no lockout.
-- **HTTPS is your reverse proxy's job** — run behind Caddy/Traefik/nginx.
+- See [Security](#security) for what is and isn't covered (no 2FA;
+  single-instance in-memory rate limiter; HTTPS via your reverse proxy).
 - Membership renewal bookkeeping is driven by Stripe webhooks; cash memberships
   need manual renewal (mark paid each cycle).
 - Monthly-credit memberships reset on a simple cycle from `cycle_started_on`;
