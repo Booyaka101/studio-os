@@ -48,3 +48,4 @@ First release. Single-studio, self-hosted, bring-your-own Stripe.
   JSON column mapping with defaults, dry-run, idempotent by email
 - Seed script (`npm run seed`), Dockerfile + docker-compose, PWA manifest +
   service worker, vendored htmx/Pico.css (no CDN), 67 tests (no network)
+

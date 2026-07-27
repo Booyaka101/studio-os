@@ -181,8 +181,29 @@ It's one file — cron it anywhere.
 
 ## Screenshots
 
-*(placeholder — public schedule, booking flow, admin dashboard, roster,
-reports)*
+**Public booking site** — what your clients see. No account needed; the waiver is
+collected on first booking, and returning clients are matched by email so membership
+or pack credits apply automatically.
+
+| Schedule | Booking a class |
+|---|---|
+| ![Public schedule](docs/screenshots/public-schedule.png) | ![Booking form](docs/screenshots/public-booking.png) |
+
+**Buy page** — class packs and memberships, on *your* Stripe account (or pay-at-studio
+if you haven't connected Stripe).
+
+![Buy page](docs/screenshots/public-buy.png)
+
+**Admin** — dashboard, schedule, class roster with one-tap check-in, client profiles,
+and revenue reports.
+
+| Dashboard | Roster & check-in |
+|---|---|
+| ![Admin dashboard](docs/screenshots/admin-dashboard.png) | ![Roster](docs/screenshots/admin-roster.png) |
+
+| Schedule management | Client profile | Reports |
+|---|---|---|
+| ![Schedule](docs/screenshots/admin-schedule.png) | ![Client](docs/screenshots/admin-client.png) | ![Reports](docs/screenshots/admin-reports.png) |
 
 ## Development
 

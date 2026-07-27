@@ -23,7 +23,7 @@
       <strong><%= t.name %></strong> · <%= t.duration_min %>min · cap <%= t.capacity %> · <%= fmtMoney(t.drop_in_price_cents) %> drop-in
       <%= t.active ? '' : ' · INACTIVE' %>
     </summary>
-    <form method="post" action="/admin/class-types/<%= t.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">">
+    <form method="post" action="/admin/class-types/<%= t.id %>"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="grid">
         <label>Name <input name="name" value="<%= t.name %>" required></label>
         <label>Color <input type="color" name="color" value="<%= t.color %>"></label>

@@ -13,7 +13,7 @@
 <% for (const i of instructors) { %>
   <details>
     <summary><strong><%= i.name %></strong><%= i.active ? '' : ' · INACTIVE' %></summary>
-    <form method="post" action="/admin/instructors/<%= i.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">">
+    <form method="post" action="/admin/instructors/<%= i.id %>"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="grid">
         <label>Name <input name="name" value="<%= i.name %>" required></label>
         <label>Bio <input name="bio" value="<%= i.bio %>"></label>

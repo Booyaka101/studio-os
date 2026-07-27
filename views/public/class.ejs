@@ -12,7 +12,7 @@
     <% if (inst.drop_in_price_cents > 0) { %><br><small>Drop-in price: <%= fmtMoney(inst.drop_in_price_cents) %> · uses <%= inst.credits_required %> credit<%= inst.credits_required === 1 ? '' : 's' %> from a pass</small><% } %>
   </p>
   <% if (error) { %><p class="flash error" role="alert"><%= error %></p><% } %>
-  <form method="post" action="/class/<%= inst.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/book">
+  <form method="post" action="/class/<%= inst.id %>/book"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid">
       <label>Your name <input name="name" value="<%= form.name || '' %>" placeholder="Jane Chan"></label>
       <label>Email <input type="email" name="email" required value="<%= form.email || '' %>" placeholder="you@example.com"></label>

@@ -14,7 +14,7 @@
       <td><%= b.paid_with.replace(/_/g, ' ') %></td>
       <td><%= b.status %></td>
       <td>
-        <form method="post" action="/admin/bookings/<%= b.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/status" class="inline-form">
+        <form method="post" action="/admin/bookings/<%= b.id %>/status" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <% if (b.status !== 'attended') { %><button name="status" value="attended" class="slim">Check in</button><% } %>
           <% if (b.status !== 'no_show') { %><button name="status" value="no_show" class="slim outline">No-show</button><% } %>
           <% if (b.status !== 'booked') { %><button name="status" value="booked" class="slim outline secondary">Undo</button><% } %>
@@ -31,7 +31,7 @@
   <ol>
   <% for (const b of waitlist) { %>
     <li><a href="/admin/clients/<%= b.client_id %>"><%= b.client_name %></a> <small><%= b.email %></small>
-      <form method="post" action="/admin/bookings/<%= b.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/status" class="inline-form">
+      <form method="post" action="/admin/bookings/<%= b.id %>/status" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button name="status" value="cancelled" class="slim outline secondary">Remove</button>
       </form>
     </li>
@@ -40,7 +40,7 @@
 <% } %>
 <details>
   <summary role="button" class="outline">Add walk-in</summary>
-  <form method="post" action="/admin/instances/<%= inst.id %><input type="hidden" name="_csrf" value="<%= csrfToken %>">/walkin">
+  <form method="post" action="/admin/instances/<%= inst.id %>/walkin"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid">
       <label>Name <input name="name"></label>
       <label>Email <input type="email" name="email" required></label>
