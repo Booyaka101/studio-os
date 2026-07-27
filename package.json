@@ -1,0 +1,32 @@
+{
+  "name": "studio-os",
+  "version": "0.1.0",
+  "description": "Self-hosted studio management: booking, class packs, memberships. Bring your own Stripe.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test test/",
+    "seed": "node scripts/seed.mjs",
+    "import-mindbody": "node scripts/import-mindbody.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.10.0",
+    "cookie-session": "^2.1.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "marked": "^12.0.2",
+    "nodemailer": "^6.9.16",
+    "stripe": "^16.12.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  }
+}
