@@ -1,0 +1,9 @@
+First Name,Last Name,Email,Mobile Phone,Home Phone,Address,City,Notes,Liability Waiver,Client Since
+Wing Yan,Chan,wingyan.chan@example.com,+852 9123 4567,,"Flat 12B, Harbour Towers",Hong Kong,"Prefers morning classes, shoulder injury (2024)",Yes,1/15/2023
+Ka Ming,Wong,kaming.wong@example.com,+852 9876 5432,+852 2345 6789,,Kowloon,,Yes,3/2/2024
+Siu Fung,Lee,siufung.lee@example.com,,,,,"Referred by Wing Yan",No,11/20/2025
+Emily,Tsang,emily.tsang@example.com,+852 6011 2233,,,"Sha Tin","VIP — annual member since 2022",Yes,6/6/2022
+David,Ng,,+852 5544 3322,,,,No email on file — front desk only,No,2/14/2025
+Hoi Ching,Lam,hoiching.lam@example.com,+852 6677 8899,,,Tsuen Wan,,Yes,9/9/2024
+Jason,"O'Brien, Jr.",jason.obrien@example.com,+852 9000 1111,,,Central,"Name contains comma, tests quoting",Yes,5/1/2025
+Mei,Cheung,MEI.CHEUNG@Example.com,+852 6123 9876,,,Mong Kok,Uppercase email in export,Yes,7/30/2025

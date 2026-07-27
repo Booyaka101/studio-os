@@ -12,13 +12,10 @@ Run tests: `npm test`. Start: `npm start` (PORT env, default 3000).
 - [x] Auth service (bcryptjs + HMAC magic-link tokens), mailer (SMTP or `data/outbox/*.eml` fallback + all templates), Stripe service (isolated, injectable client, idempotent fulfillment by `payments.stripe_session_id` UNIQUE)
 - [x] App skeleton `src/app.js` (webhook raw-body mounted before parsers, cookie-session, setup gate, view locals) + `src/server.js` (boot + daily generator)
 - [x] Routes: setup wizard, staff login/logout, webhooks, public (schedule/class/book with waiver/buy/magic-link request), `src/routes/me.js` (magic-link self-service + cancel)
+- [x] Admin routes + full EJS UI (public + admin), PWA assets (manifest, sw.js, custom.css), 16 supertest web tests (commits 897ad8e, 7449c52)
+- [x] Mindbody importer: `src/services/importer.js` (CSV parser, mapping defaults + overrides, idempotent by email), `scripts/import-mindbody.mjs` CLI (--clients/--passes/--mapping/--db/--dry-run), realistic fixtures `test/fixtures/mindbody-{clients,passes}.csv` (edge cases: missing email, quoted commas, uppercase email, malformed row), admin `/admin/import` page wired, 8 importer tests + 1 web test (56 total green)
 
 ## Next (exact order)
-1. `src/routes/admin.js` — dashboard, class types/instructors/rules CRUD (regenerate instances on rule change), schedule + one-off classes, cancel class w/ notify, roster check-in/no-show/walk-in, clients (profile, manual pass/membership/payment, waiver, magic link), products (pack_products + membership_plans), reports (+CSV), settings (+backup via VACUUM INTO), pending payments mark-paid, import page
-2. `views/` — partials (head/nav/foot), error.ejs, setup.ejs, login.ejs, public/* (schedule, class, book_result, buy, buy_manual, buy_thanks, me, magic_request), admin/* — **app cannot boot until views exist**
-3. `public/css/custom.css`, `public/manifest.json`, `public/js/sw.js` + registration
-4. Web tests (supertest): setup wizard, login, booking round-trip incl. waiver, magic-link cancel, buy manual fallback
-5. Mindbody importer `scripts/import-mindbody.mjs` + fixtures `test/fixtures/mindbody-*.csv` + admin page + idempotency tests
 6. Stripe webhook tests (mock client, no network)
 7. `scripts/seed.mjs`, Dockerfile, docker-compose.yml, README.md, CHANGELOG.md
 8. Self-verify: npm test green; boot on free PORT; curl setup → schedule → booking round-trip with seeded data; record transcript summary here

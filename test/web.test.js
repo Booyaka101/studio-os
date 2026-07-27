@@ -6,6 +6,7 @@ import request from 'supertest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { openDb, setSetting, getSetting } from '../src/db/index.js';
 import { createApp } from '../src/app.js';
 import { createMailer } from '../src/services/mailer.js';
@@ -281,6 +282,27 @@ test('admin: settings update + backup download', async () => {
   assert.equal(getSetting(db, 'studio_name'), 'Renamed Studio');
   assert.equal(getSetting(db, 'cancellation_window_hours'), '24');
   assert.equal(getSetting(db, 'late_cancel_policy'), 'refund');
+});
+
+test('admin: Mindbody import page dry-run previews, real run writes, re-run updates', async () => {
+  const { db, app } = makeApp();
+  const agent = request.agent(app);
+  await agent.post('/admin/login').type('form').send({ email: 'owner@test.test', password: 'password123' });
+
+  const csv = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'mindbody-clients.csv'), 'utf8');
+  const dry = await agent.post('/admin/import').type('form').send({ kind: 'clients', dry_run: '1', csv });
+  assert.equal(dry.status, 200);
+  assert.match(dry.text, /dry run — nothing written/);
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM clients').get().c, 0);
+
+  const real = await agent.post('/admin/import').type('form').send({ kind: 'clients', csv });
+  assert.equal(real.status, 200);
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM clients').get().c, 7);
+
+  const again = await agent.post('/admin/import').type('form').send({ kind: 'clients', csv });
+  assert.equal(again.status, 200);
+  assert.match(again.text, /<strong>0<\/strong> created/);
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM clients').get().c, 7, 'idempotent via the web UI too');
 });
 
 test('webhook endpoint returns 501 when Stripe is unconfigured', async () => {
