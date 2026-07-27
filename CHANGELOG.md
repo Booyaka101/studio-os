@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Fix: CSRF inputs injected inside attribute values.** The hardening pass had
+  inserted the hidden `_csrf` input at the wrong offset in 22 forms whose
+  `action` contained an EJS expression, corrupting the submit URL and leaking
+  markup as visible text. All POST forms now carry the token immediately after
+  the form open tag, enforced by a new static views-integrity test suite
+  (`test/views.test.js`), and verified with a real in-browser form submission.
+- **README screenshots**: 8 captured views of the seeded demo studio (public
+  schedule/booking/buy, admin dashboard/schedule/roster/client/reports).
 - **Docker verified end-to-end**: `docker compose build && up -d` → setup
   wizard, admin class creation, public schedule and a guest booking all
   exercised against the running container, then `down -v`. Fixed
