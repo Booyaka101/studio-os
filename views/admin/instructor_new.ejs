@@ -1,0 +1,15 @@
+<%- include('../partials/head') %>
+<article class="narrow">
+  <h3>New instructor login</h3>
+  <p>Creates an account that can sign in on the staff login page, see its assigned
+     classes and check attendees in — nothing else.</p>
+  <% if (error) { %><p class="flash error" role="alert"><%= error %></p><% } %>
+  <form method="post" action="/admin/instructors/new"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Name <input name="name" value="<%= values.name || '' %>" required></label>
+    <label>Email <input type="email" name="email" value="<%= values.email || '' %>" required></label>
+    <label>Password <input type="password" name="password" minlength="8" required></label>
+    <button>Create instructor login</button>
+  </form>
+  <p><a href="/admin/instructors">&larr; Back to instructors</a></p>
+</article>
+<%- include('../partials/foot') %>

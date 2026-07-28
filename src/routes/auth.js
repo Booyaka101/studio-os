@@ -5,8 +5,13 @@ import { audit } from '../db/index.js';
 export default function authRoutes({ db }) {
   const r = Router();
 
+  const homeFor = (user) => (user.role === 'instructor' ? '/instructor/schedule' : '/admin');
+
+  // One login form for every staff role; /login is a friendly alias.
+  r.get('/login', (req, res) => res.redirect('/admin/login'));
+
   r.get('/admin/login', (req, res) => {
-    if (req.session.userId) return res.redirect('/admin');
+    if (req.session.userId && res.locals.user) return res.redirect(homeFor(res.locals.user));
     res.render('login', { title: 'Staff login', error: null });
   });
 
@@ -17,7 +22,7 @@ export default function authRoutes({ db }) {
     }
     req.session.userId = user.id;
     audit(db, user.email, 'login', 'user:' + user.id);
-    res.redirect('/admin');
+    res.redirect(homeFor(user));
   });
 
   r.post('/admin/logout', (req, res) => {

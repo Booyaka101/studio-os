@@ -1,0 +1,27 @@
+<%- include('../partials/head') %>
+<hgroup>
+  <h3><%= inst.class_name %> roster</h3>
+  <p><%= fmtDt(inst.starts_at) %> · <%= inst.duration_min %> min · capacity <%= inst.capacity %>
+     <% if (inst.status === 'cancelled') { %> · <mark>CANCELLED</mark><% } %></p>
+</hgroup>
+<p><a href="/instructor/schedule">&larr; Back to my schedule</a></p>
+<table>
+  <thead><tr><th>Attendee</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  <% for (const b of roster) { %>
+    <tr>
+      <td><%= b.client_name %></td>
+      <td><%= b.status === 'attended' ? 'checked-in' : b.status.replace(/_/g, ' ') %></td>
+      <td>
+        <% if (b.status === 'booked') { %>
+          <form method="post" action="/instructor/classes/<%= inst.id %>/checkin/<%= b.id %>" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="slim">Check in</button>
+          </form>
+        <% } %>
+      </td>
+    </tr>
+  <% } %>
+  <% if (!roster.length) { %><tr><td colspan="3">No bookings yet.</td></tr><% } %>
+  </tbody>
+</table>
+<%- include('../partials/foot') %>

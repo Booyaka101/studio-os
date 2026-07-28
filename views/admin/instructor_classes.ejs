@@ -1,0 +1,21 @@
+<%- include('../partials/head') %>
+<hgroup>
+  <h3>Assign classes — <%= account.name || account.email %></h3>
+  <p>Tick the upcoming classes this instructor teaches. They will see these on
+     their schedule and can check attendees in. Past assignments are kept as-is.</p>
+</hgroup>
+<form method="post" action="/admin/instructors/<%= account.id %>/classes"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <% if (!instances.length) { %>
+    <p>No upcoming scheduled classes — create rules or one-off classes first.</p>
+  <% } %>
+  <% for (const ci of instances) { %>
+    <label>
+      <input type="checkbox" name="class_ids" value="<%= ci.id %>" <%= assigned.has(ci.id) ? 'checked' : '' %>>
+      <%= fmtDt(ci.starts_at) %> — <%= ci.class_name %>
+      <% if (ci.instructor_name) { %><small>(profile: <%= ci.instructor_name %>)</small><% } %>
+    </label>
+  <% } %>
+  <% if (instances.length) { %><button>Save assignments</button><% } %>
+</form>
+<p><a href="/admin/instructors">&larr; Back to instructors</a></p>
+<%- include('../partials/foot') %>

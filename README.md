@@ -14,6 +14,8 @@ Node on a $5 VPS or a spare machine at the studio.
 - Atomic capacity, FIFO waitlist with auto-promotion, cancellation-window policy
 - Admin: rosters + check-in, clients, manual sales, revenue/attendance reports + CSV,
   one-click SQLite backup
+- Instructor logins: per-class assignments, a scoped schedule + roster portal
+  with attendee check-in, zero admin access
 - Mindbody CSV importer (clients + pricing options), idempotent and dry-runnable
 - Stripe Checkout for packs and membership subscriptions (optional), SMTP email
   (optional — without it, emails land in `data/outbox/` and links show on screen)
@@ -74,6 +76,10 @@ npm start      # admin login: owner@example.com / studio-demo
    the waiver on first booking.
 5. Sell packs/memberships from a client's profile (manual), or connect Stripe
    for online purchase.
+6. Optional: Admin → Instructors → "Add instructor login", then tick the
+   classes they teach. Instructors sign in on the same staff login page and get
+   a portal with just their schedule and rosters (with check-in) — no admin
+   access.
 
 ## Migrating from Mindbody
 
@@ -238,7 +244,6 @@ Stripe webhook fulfillment against a mock client.
 - Branded/installable PWA per studio (custom colors, icon, name)
 - SMS reminders (Twilio-compatible, bring-your-own account)
 - Recurring cash membership invoicing + renewal reminders
-- Instructor logins with per-class permissions
 - Retail/POS, gift cards, video — explicitly out of scope for now, as are staff
   payroll, per-instructor payouts, marketing automation, native apps, GDPR
   export tooling and i18n.

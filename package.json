@@ -1,6 +1,6 @@
 {
   "name": "studio-os",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Self-hosted studio management: booking, class packs, memberships. Bring your own Stripe.",
   "license": "MIT",
   "type": "module",

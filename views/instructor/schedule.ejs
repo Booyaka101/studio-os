@@ -1,0 +1,21 @@
+<%- include('../partials/head') %>
+<hgroup>
+  <h3>My schedule</h3>
+  <p>Classes you are assigned to teach, from today onward.</p>
+</hgroup>
+<table>
+  <thead><tr><th>When</th><th>Class</th><th>Booked</th><th></th></tr></thead>
+  <tbody>
+  <% for (const c of classes) { %>
+    <tr>
+      <td><%= fmtDt(c.starts_at) %></td>
+      <td><span class="dot" style="background:<%= c.color %>"></span> <%= c.class_name %>
+        <% if (c.status === 'cancelled') { %> <mark>CANCELLED</mark><% } %></td>
+      <td><%= c.booked_count %>/<%= c.capacity %></td>
+      <td><a href="/instructor/classes/<%= c.id %>/roster" role="button" class="slim outline">Roster</a></td>
+    </tr>
+  <% } %>
+  <% if (!classes.length) { %><tr><td colspan="4">No upcoming classes assigned to you yet — ask the studio admin.</td></tr><% } %>
+  </tbody>
+</table>
+<%- include('../partials/foot') %>

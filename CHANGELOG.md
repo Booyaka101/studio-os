@@ -1,6 +1,33 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-07-28
+
+- **Instructor logins.** New `instructor` user role alongside the existing
+  owner/staff (admin) roles — existing accounts are untouched by the
+  migration (v2 rebuilds the `users` CHECK; SQLite cannot alter one in
+  place). Instructors sign in on the same staff login form (`/login` now
+  aliases `/admin/login`) and land on their own portal:
+  - `GET /instructor/schedule` — the classes they are assigned to, from
+    today onward, sorted by date
+  - `GET /instructor/classes/:id/roster` — attendee list with status
+    (booked / checked-in / no-show / cancelled), class time and capacity;
+    client emails are *not* exposed to instructors
+  - `POST /instructor/classes/:id/checkin/:booking_id` — check an attendee
+    in (same `markAttendance` business logic as the admin roster)
+  - Route guards: every `/admin/*` route returns **403** for instructor
+    accounts; rosters and check-in return **403** for classes the
+    instructor is not assigned to.
+- **Admin: instructor account management.** The Instructors page gains an
+  "Instructor logins" section; `/admin/instructors/new` creates an account
+  (name, email, password ≥ 8 chars, role `instructor`);
+  `/admin/instructors/:id/classes` assigns/unassigns upcoming classes via
+  checkboxes (many-to-many `instructor_class_assignments` table, cascade
+  on account/instance deletion; past assignments are left untouched).
+- 12 new tests (guards, scoping, check-in, admin CRUD, migration; the four
+  new views covered by the integrity suite) — 110 total, no network.
+  Upgrade path verified against a real v1 database file.
+
+## 0.1.0-hardening — 2026-07-28
 
 - **Fix: CSRF inputs injected inside attribute values.** The hardening pass had
   inserted the hidden `_csrf` input at the wrong offset in 22 forms whose

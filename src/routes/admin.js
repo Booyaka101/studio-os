@@ -2,7 +2,7 @@ import { Router } from 'express';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { requireStaff, makeMagicToken, createUser } from '../services/auth.js';
+import { requireAdmin, makeMagicToken, createUser } from '../services/auth.js';
 import { getSetting, setSetting, audit } from '../db/index.js';
 import { generateInstances, upcomingInstances } from '../services/schedule.js';
 import {
@@ -15,7 +15,7 @@ import { localDateStr, zonedToUtc, addDays } from '../lib/time.js';
 export default function adminRoutes(services) {
   const { db, mailer } = services;
   const r = Router();
-  r.use(requireStaff);
+  r.use(requireAdmin);
 
   const who = (req) => (req.session.userId
     ? (db.prepare('SELECT email FROM users WHERE id = ?').get(req.session.userId) || {}).email || 'staff'
@@ -92,13 +92,92 @@ export default function adminRoutes(services) {
   // ---------------------------------------------------------- instructors CRUD
   r.get('/instructors', (req, res) => {
     const instructors = db.prepare('SELECT * FROM instructors ORDER BY active DESC, name').all();
-    res.render('admin/instructors', { title: 'Instructors', instructors });
+    const accounts = db.prepare(
+      `SELECT u.id, u.name, u.email, u.created_at,
+              (SELECT COUNT(*) FROM instructor_class_assignments ica
+                 JOIN class_instances ci ON ci.id = ica.class_id
+                 WHERE ica.instructor_id = u.id AND ci.starts_at >= ?) AS upcoming_count
+       FROM users u WHERE u.role = 'instructor' ORDER BY u.name, u.email`
+    ).all(new Date().toISOString());
+    res.render('admin/instructors', { title: 'Instructors', instructors, accounts });
   });
 
   r.post('/instructors', (req, res) => {
     db.prepare('INSERT INTO instructors (name, bio) VALUES (?, ?)').run(req.body.name, req.body.bio || '');
     audit(db, who(req), 'instructor_create', req.body.name);
     res.redirect('/admin/instructors');
+  });
+
+  // ------------------------------------------------------- instructor logins
+  r.get('/instructors/new', (req, res) => {
+    res.render('admin/instructor_new', { title: 'New instructor login', error: null, values: {} });
+  });
+
+  r.post('/instructors/new', (req, res) => {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || password.length < 8) {
+      return res.status(400).render('admin/instructor_new', {
+        title: 'New instructor login',
+        error: 'A valid email and a password of at least 8 characters are required.',
+        values: { name: req.body.name || '', email },
+      });
+    }
+    try {
+      const id = createUser(db, { email, password, name: req.body.name || '', role: 'instructor' });
+      audit(db, who(req), 'instructor_account_create', email);
+      req.session.flash = 'Instructor login created — now assign their classes.';
+      res.redirect(`/admin/instructors/${id}/classes`);
+    } catch (err) {
+      res.status(400).render('admin/instructor_new', {
+        title: 'New instructor login',
+        error: err.message.includes('UNIQUE') ? 'That email already has an account.' : err.message,
+        values: { name: req.body.name || '', email },
+      });
+    }
+  });
+
+  // Upcoming-class window shared by the assignment form's GET and POST so a
+  // save only rewrites assignments for the instances that were displayed.
+  const assignableInstances = () => db.prepare(
+    `SELECT ci.id, ci.starts_at, ci.capacity, ct.name AS class_name, i.name AS instructor_name
+     FROM class_instances ci JOIN class_types ct ON ct.id = ci.class_type_id
+     LEFT JOIN instructors i ON i.id = ci.instructor_id
+     WHERE ci.starts_at >= ? AND ci.status = 'scheduled' ORDER BY ci.starts_at`
+  ).all(new Date().toISOString());
+
+  const instructorAccount = (id) => db.prepare(
+    "SELECT * FROM users WHERE id = ? AND role = 'instructor'"
+  ).get(id);
+
+  r.get('/instructors/:id/classes', (req, res) => {
+    const account = instructorAccount(req.params.id);
+    if (!account) return res.status(404).render('error', { title: 'Not found', message: 'Instructor login not found.' });
+    const instances = assignableInstances();
+    const assigned = new Set(db.prepare(
+      'SELECT class_id FROM instructor_class_assignments WHERE instructor_id = ?'
+    ).all(account.id).map((r2) => r2.class_id));
+    res.render('admin/instructor_classes', {
+      title: `Assign classes — ${account.name || account.email}`, account, instances, assigned,
+    });
+  });
+
+  r.post('/instructors/:id/classes', (req, res) => {
+    const account = instructorAccount(req.params.id);
+    if (!account) return res.status(404).render('error', { title: 'Not found', message: 'Instructor login not found.' });
+    const checked = new Set([].concat(req.body.class_ids || []).map(Number).filter(Number.isInteger));
+    const shown = assignableInstances();
+    db.transaction(() => {
+      const del = db.prepare('DELETE FROM instructor_class_assignments WHERE instructor_id = ? AND class_id = ?');
+      const ins = db.prepare('INSERT OR IGNORE INTO instructor_class_assignments (instructor_id, class_id) VALUES (?, ?)');
+      for (const inst of shown) {
+        if (checked.has(inst.id)) ins.run(account.id, inst.id);
+        else del.run(account.id, inst.id);
+      }
+    })();
+    audit(db, who(req), 'instructor_assign', `user:${account.id} classes:${checked.size}`);
+    req.session.flash = `Assignments saved — ${checked.size} upcoming class(es).`;
+    res.redirect(`/admin/instructors/${account.id}/classes`);
   });
 
   r.post('/instructors/:id', (req, res) => {

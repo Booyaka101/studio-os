@@ -13,6 +13,7 @@ import authRoutes from './routes/auth.js';
 import publicRoutes from './routes/public.js';
 import meRoutes from './routes/me.js';
 import adminRoutes from './routes/admin.js';
+import instructorRoutes from './routes/instructor.js';
 import webhookRoutes from './routes/webhooks.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -124,6 +125,7 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
   app.use('/setup', setupRoutes(services));
   app.use('/', authRoutes(services));
   app.use('/admin', adminRoutes(services));
+  app.use('/instructor', instructorRoutes(services));
   app.use('/me', meRoutes(services));
   app.use('/', publicRoutes(services));
 

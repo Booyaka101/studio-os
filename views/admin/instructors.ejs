@@ -25,4 +25,25 @@
     </form>
   </details>
 <% } %>
+
+<h3>Instructor logins</h3>
+<p>Accounts that can sign in, see the classes assigned to them and check
+   attendees in — no admin access. <a href="/admin/instructors/new" role="button" class="slim outline">Add instructor login</a></p>
+<% if (accounts.length) { %>
+<table>
+  <thead><tr><th>Name</th><th>Email</th><th>Upcoming classes</th><th></th></tr></thead>
+  <tbody>
+  <% for (const a of accounts) { %>
+    <tr>
+      <td><%= a.name || '—' %></td>
+      <td><%= a.email %></td>
+      <td><%= a.upcoming_count %></td>
+      <td><a href="/admin/instructors/<%= a.id %>/classes" role="button" class="slim outline">Assign classes</a></td>
+    </tr>
+  <% } %>
+  </tbody>
+</table>
+<% } else { %>
+  <p><em>No instructor logins yet.</em></p>
+<% } %>
 <%- include('../partials/foot') %>

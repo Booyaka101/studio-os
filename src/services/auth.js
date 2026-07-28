@@ -60,3 +60,22 @@ export function requireStaff(req, res, next) {
   if (req.session && req.session.userId) return next();
   return res.redirect('/admin/login');
 }
+
+/** Admin area: any logged-in owner/staff. Instructors get a hard 403. */
+export function requireAdmin(req, res, next) {
+  if (!req.session || !req.session.userId || !res.locals.user) return res.redirect('/admin/login');
+  if (res.locals.user.role === 'instructor') {
+    return res.status(403).render('error', {
+      title: 'Forbidden',
+      message: 'Instructor accounts cannot access the admin area.',
+    });
+  }
+  next();
+}
+
+/** Instructor portal: instructor role only; admins are sent to their own UI. */
+export function requireInstructor(req, res, next) {
+  if (!req.session || !req.session.userId || !res.locals.user) return res.redirect('/admin/login');
+  if (res.locals.user.role !== 'instructor') return res.redirect('/admin');
+  next();
+}
