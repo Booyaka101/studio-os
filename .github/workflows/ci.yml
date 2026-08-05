@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Our own tool. Locks the runner image's tool versions and diffs them when
+      # GitHub bumps the image — including when a floating label like
+      # ubuntu-latest silently re-points. Report-only; no fail-on yet.
+      - name: Runner image drift
+        uses: Booyaka101/runner-drift@v1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - run: npm ci
+      - run: npm test
