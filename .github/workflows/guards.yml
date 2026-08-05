@@ -36,3 +36,11 @@ jobs:
       - name: Allowlist drift
         continue-on-error: true
         run: npx --yes npm-script-lens@latest sync --path . --check
+
+      # Shell/Dockerfile/Terraform/PHP — the file types GitHub gated behind paid
+      # Advanced Security. This repo ships a Dockerfile. Reports without gating.
+      - name: Free GHAS-equivalent scan
+        continue-on-error: true
+        uses: Booyaka101/ghas-free-pack@v1
+        with:
+          github-token: ${{ github.token }}
