@@ -20,6 +20,8 @@ jobs:
       # ubuntu-latest silently re-points. Report-only; no fail-on yet.
       - name: Runner image drift
         uses: Booyaka101/runner-drift@v1
+        with:
+          fail-on-retirement: 60
 
       - uses: actions/setup-node@v4
         with:
