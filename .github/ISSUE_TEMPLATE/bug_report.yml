@@ -1,0 +1,49 @@
+name: Bug report
+description: Something didn't work the way it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please **never paste Stripe keys, session cookies or customer data** — screenshots of a live studio leak more than people expect. Redact before posting.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, and what came back.
+      placeholder: |
+        $ npm start
+        Error: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Studio OS version
+      description: From `package.json`, or the tag you deployed.
+    validations:
+      required: true
+
+  - type: input
+    id: runtime
+    attributes:
+      label: How you are running it
+      description: Node version, or the Docker image tag, plus the OS and the database you pointed it at.
+      placeholder: Docker, node:22-alpine, Postgres 16 on Debian 12
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Did this affect real bookings or payments?
+      description: Say so plainly if it did. Anything touching money or a customer's booking gets looked at first.

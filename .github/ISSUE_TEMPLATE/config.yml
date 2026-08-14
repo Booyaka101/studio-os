@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Stripe API documentation
+    url: https://docs.stripe.com/api
+    about: Payment intents, webhooks and payout timing are Stripe's behaviour, not this app's.
+  - name: Security issue
+    url: https://github.com/Booyaka101/studio-os/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.
