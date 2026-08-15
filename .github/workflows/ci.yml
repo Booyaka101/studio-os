@@ -13,7 +13,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Our own tool. Locks the runner image's tool versions and diffs them when
       # GitHub bumps the image — including when a floating label like
