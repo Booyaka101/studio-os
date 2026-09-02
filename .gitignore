@@ -4,3 +4,6 @@ data/*.db-*
 data/outbox/
 .env
 *.log
+
+# Local build notes, not for the public repo
+PROGRESS.md
