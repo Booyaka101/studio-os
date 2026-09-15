@@ -13,11 +13,11 @@
     "import-mindbody": "node scripts/import-mindbody.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.10.0",
+    "better-sqlite3": "^13.0.1",
     "cookie-session": "^2.1.0",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
@@ -28,9 +28,6 @@
   },
   "devDependencies": {
     "supertest": "^7.0.0"
-  },
-  "allowScripts": {
-    "better-sqlite3@11.10.0": true
   },
   "repository": {
     "type": "git",
