@@ -257,7 +257,11 @@ test('admin: rules CRUD generates instances; roster check-in works over HTTP', a
 
   // book someone in, then check them in via admin
   const clientId = makeClient(db, { email: 'roster@test.hk' });
-  const instId = db.prepare('SELECT id FROM class_instances ORDER BY starts_at LIMIT 1').get().id;
+  // the earliest instance of a Tuesday 18:30 rule is today's when the suite
+  // runs on a Tuesday evening, and book() rejects a class that has started
+  const instId = db.prepare(
+    'SELECT id FROM class_instances WHERE starts_at > ? ORDER BY starts_at LIMIT 1'
+  ).get(new Date().toISOString()).id;
   const { book } = await import('../src/services/booking.js');
   const { booking } = book(db, clientId, instId);
 
