@@ -79,7 +79,10 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
     res.locals.user = req.session && req.session.userId
       ? db.prepare('SELECT id, email, name, role FROM users WHERE id = ?').get(req.session.userId)
       : null;
-    res.locals.stripeConfigured = services.stripe.configured;
+    // Public views ask "can we take money online?", which needs both keys.
+    res.locals.stripeConfigured = services.stripe.checkoutReady;
+    res.locals.stripeKeySet = services.stripe.configured;
+    res.locals.stripeWebhookSet = services.stripe.webhookConfigured;
     res.locals.smtpConfigured = services.mailer.smtpConfigured;
     res.locals.flash = req.session ? req.session.flash : null;
     if (req.session) delete req.session.flash;

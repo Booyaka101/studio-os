@@ -7,7 +7,7 @@
   </article>
   <article>
     <h4>Status</h4>
-    <p><small>Stripe: <%= stripeConfigured ? 'connected' : 'not connected — purchases fall back to pay-at-studio' %><br>
+    <p><small>Stripe: <%= stripeConfigured ? 'connected' : (stripeKeySet ? 'key set, webhook secret missing. Online payment is off, see Settings' : 'not connected — purchases fall back to pay-at-studio') %><br>
     Email: <%= smtpConfigured ? 'SMTP configured' : 'off — messages saved to data/outbox, links shown on screen' %></small></p>
   </article>
 </div>

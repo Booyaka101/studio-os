@@ -15,6 +15,13 @@
   returned early for an unknown email and skipped bcrypt entirely, answering
   ~3000x faster than for a real one. Both paths now do one bcrypt comparison.
   `app_secret` is also no longer reachable from templates.
+- **A half-configured Stripe took money and delivered nothing.** Online
+  checkout was offered whenever `STRIPE_SECRET_KEY` was set, but fulfilment
+  needs `STRIPE_WEBHOOK_SECRET` too. Without it the client paid at Stripe,
+  `/webhooks/stripe` rejected the callback with 501, and no pass and no payment
+  row was created. Checkout is now offered only when both are set, otherwise
+  purchases use the existing pay-at-studio flow. The admin dashboard and
+  settings page say which key is missing instead of reporting "connected".
 - **Membership credit cycles drifted for end-of-month joins.** Cycles were
   stepped from the previous cycle, so February's day clamp compounded: a
   membership joined on the 31st became the 28th and stayed there. Cycles now
@@ -22,7 +29,7 @@
   already-drifted membership does not refill its credits mid-month.
 - **Dependencies**: stripe 16 → 22, nodemailer 9 → 10 (clears
   GHSA-8m3c-c648-2xjj), marked → 18.0.13. `npm audit` is clean.
-- **Tests**: 110 → 123. The Stripe and mailer suites only ever ran against a
+- **Tests**: 110 → 127. The Stripe and mailer suites only ever ran against a
   mock client and the offline outbox, so neither package was imported under
   test and a major bump could not have failed CI. New tests exercise the real
   packages, including webhook signature verification.
