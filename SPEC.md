@@ -11,7 +11,7 @@ Deployment target: one Docker container (or `npm start`) on a $5 VPS or a spare 
 ## v0.1 scope (MUST all work)
 
 ### Stack
-- Node 20+, Express, better-sqlite3 (WAL mode), server-rendered EJS templates + HTMX
+- Node 22+, Express, better-sqlite3 (WAL mode), server-rendered EJS templates + HTMX
   (vendored locally, NO CDN at runtime), vendored Pico.css + one small custom stylesheet.
   No frontend build step. No paid APIs. Everything works offline except Stripe/SMTP.
 - `node:test` + supertest for tests. Dockerfile + docker-compose.yml. `.env` config

@@ -46,7 +46,7 @@ curl -i http://localhost:3000/   # 302 → /setup on a fresh volume
 docker compose down -v           # stop + remove the data volume
 ```
 
-### Bare Node (Node 20+)
+### Bare Node (Node 22+)
 
 ```sh
 git clone <this repo> studio-os && cd studio-os
@@ -219,7 +219,7 @@ npm test        # node:test + supertest, no network
 npm run dev     # --watch mode
 ```
 
-Stack: Node 20+, Express, better-sqlite3 (WAL), EJS + HTMX + Pico.css
+Stack: Node 22+, Express, better-sqlite3 (WAL), EJS + HTMX + Pico.css
 (vendored). No frontend build. Tests cover the booking engine (capacity races,
 waitlist FIFO, credit deduct/refund, late-cancel policy), schedule
 materialization across timezones, the web flows, importer idempotency, and
