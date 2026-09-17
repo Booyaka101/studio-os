@@ -24,22 +24,28 @@ function bookedCount(db, instanceId) {
 /** Lazy monthly-credit cycle reset for a credit-based membership. */
 function refreshMembershipCycle(db, m, todayLocal) {
   if (m.unlimited || !m.credits_per_month) return m;
-  let cycleStart = m.cycle_started_on || m.started_on;
-  let changed = false;
-  // advance cycle start by whole months until it is the current cycle
-  while (addMonths(cycleStart, 1) <= todayLocal) {
-    cycleStart = addMonths(cycleStart, 1);
-    changed = true;
-  }
-  if (changed) {
+  // Cycles anchor on the join date rather than stepping from the previous
+  // cycle. Stepping compounds February's day clamp: a membership joined on the
+  // 31st becomes the 28th that month and then stays the 28th for good. From
+  // the anchor it clamps only where it has to — 31 Jan, 28 Feb, 31 Mar.
+  const anchor = m.started_on;
+  const [ay, am] = anchor.split('-').map(Number);
+  const [ty, tm] = todayLocal.split('-').map(Number);
+  let n = (ty - ay) * 12 + (tm - am);
+  if (n > 0 && addMonths(anchor, n) > todayLocal) n -= 1;
+  const cycleStart = addMonths(anchor, Math.max(0, n));
+
+  if (m.cycle_started_on === cycleStart) return m;
+  // Only a new month refills credits. Correcting a drifted day inside the
+  // current month must not hand the client a free reset.
+  const newMonth = (m.cycle_started_on || anchor).slice(0, 7) !== cycleStart.slice(0, 7);
+  if (newMonth) {
     db.prepare('UPDATE memberships SET cycle_started_on = ?, credits_used_this_cycle = 0 WHERE id = ?')
       .run(cycleStart, m.id);
-    m = { ...m, cycle_started_on: cycleStart, credits_used_this_cycle: 0 };
-  } else if (!m.cycle_started_on) {
-    db.prepare('UPDATE memberships SET cycle_started_on = ? WHERE id = ?').run(cycleStart, m.id);
-    m = { ...m, cycle_started_on: cycleStart };
+    return { ...m, cycle_started_on: cycleStart, credits_used_this_cycle: 0 };
   }
-  return m;
+  db.prepare('UPDATE memberships SET cycle_started_on = ? WHERE id = ?').run(cycleStart, m.id);
+  return { ...m, cycle_started_on: cycleStart };
 }
 
 function addMonths(dateStr, n) {
