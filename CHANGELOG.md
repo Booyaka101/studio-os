@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — 2026-09-17
 
 - **Security: magic links were emailed as `http://` behind a reverse proxy.**
   `TRUST_PROXY` was read by the rate limiter but Express's own `trust proxy`
@@ -27,13 +27,16 @@
   membership joined on the 31st became the 28th and stayed there. Cycles now
   anchor on the join date (31 Jan, 28 Feb, 31 Mar). Correcting an
   already-drifted membership does not refill its credits mid-month.
+- **Node 22 is now the minimum** (was 20), and better-sqlite3 moves 11 → 13.
+  The Docker image already ships Node 22, so this only matters if you run the
+  app straight off your own Node. README and SPEC still said 20+; they now
+  agree with `engines`.
 - **Dependencies**: stripe 16 → 22, nodemailer 9 → 10 (clears
   GHSA-8m3c-c648-2xjj), marked → 18.0.13. `npm audit` is clean.
 - **Tests**: 110 → 127. The Stripe and mailer suites only ever ran against a
   mock client and the offline outbox, so neither package was imported under
   test and a major bump could not have failed CI. New tests exercise the real
   packages, including webhook signature verification.
-- README and SPEC said Node 20+; `engines` requires >=22.
 
 ## 0.2.0 — 2026-07-28
 
