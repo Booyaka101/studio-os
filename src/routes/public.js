@@ -150,7 +150,7 @@ export default function publicRoutes(services) {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return res.status(400).render('public/buy_manual', { title: 'Buy', product, plan: null, email: null, error: 'A valid email is required.' });
     }
-    if (services.stripe.configured) {
+    if (services.stripe.checkoutReady) {
       try {
         const session = await services.stripe.createPackCheckout({
           product, clientEmail: email, baseUrl: services.baseUrl(req),
@@ -171,7 +171,7 @@ export default function publicRoutes(services) {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return res.status(400).render('public/buy_manual', { title: 'Buy', product: null, plan, email: null, error: 'A valid email is required.' });
     }
-    if (services.stripe.configured && plan.stripe_price_id) {
+    if (services.stripe.checkoutReady && plan.stripe_price_id) {
       try {
         const session = await services.stripe.createMembershipCheckout({
           plan, clientEmail: email, baseUrl: services.baseUrl(req),

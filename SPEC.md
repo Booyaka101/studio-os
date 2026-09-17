@@ -96,9 +96,9 @@ files and magic links are surfaced in the UI (so everything is testable without 
 Templates: booking confirmation, cancellation, waitlist promotion, magic link.
 
 ### Stripe (optional, BYO account)
-Env: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PUBLISHABLE_KEY. When unset, all
-purchase flows fall back to manual/"pay at studio" and the admin sees a "Stripe not connected"
-hint. When set (test mode is fine): packs via Checkout one-time, memberships via Checkout
+Env: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PUBLISHABLE_KEY. Online payment needs
+both the secret key and the webhook secret; with either missing, all purchase flows fall back
+to manual/"pay at studio" and the admin sees which half is unset. When set (test mode is fine): packs via Checkout one-time, memberships via Checkout
 subscription using `membership_plans.stripe_price_id` (admin field to paste a Price ID),
 webhook fulfillment, and payment rows with the Stripe session id. NEVER store card data.
 Write the integration against the official `stripe` npm package; all Stripe calls isolated in

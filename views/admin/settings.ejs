@@ -26,8 +26,13 @@
   <article>
     <h5>Integrations (set via environment / .env)</h5>
     <p><small>
-      Stripe secret key: <strong><%= stripeConfigured ? 'set' : 'not set' %></strong><br>
-      Stripe webhook secret: <strong><%= locals.services ? '' : '' %><%= stripeConfigured ? (settings.stripe_webhook_hint || 'see .env') : '—' %></strong><br>
+      Stripe secret key: <strong><%= stripeKeySet ? 'set' : 'not set' %></strong><br>
+      Stripe webhook secret: <strong><%= stripeWebhookSet ? 'set' : 'not set' %></strong><br>
+      <% if (stripeKeySet && !stripeWebhookSet) { %>
+      <strong>Online payment is off.</strong> Without STRIPE_WEBHOOK_SECRET the
+      fulfilment webhook is rejected, so a client would be charged and receive
+      nothing. Purchases use pay-at-studio until it is set.<br>
+      <% } %>
       SMTP: <strong><%= smtpConfigured ? 'configured' : 'not set (emails go to data/outbox/, links shown on screen)' %></strong>
     </small></p>
   </article>

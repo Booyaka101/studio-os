@@ -23,6 +23,12 @@ export function createStripeService({ env = process.env, client } = {}) {
   return {
     configured: Boolean(secretKey),
     webhookConfigured: Boolean(webhookSecret),
+    // Checkout is only safe to offer when the webhook that fulfils it will be
+    // accepted. With a secret key but no webhook secret the client pays at
+    // Stripe and /webhooks/stripe answers 501, so no pass is ever created and
+    // no payment is recorded — the money lands in Stripe with nothing to show
+    // for it. Half-configured falls back to the manual pay-at-studio flow.
+    checkoutReady: Boolean(secretKey && webhookSecret),
     publishableKey,
 
     /** One-time Checkout for a class pack. Returns the session (url etc). */

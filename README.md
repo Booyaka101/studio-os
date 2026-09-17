@@ -138,6 +138,9 @@ activate purchases manually from the client profile — fully usable cash-only.
    events `checkout.session.completed` and `customer.subscription.deleted`.
    Copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
    (Local testing: `stripe listen --forward-to localhost:3000/webhooks/stripe`.)
+   The webhook secret is not optional: online payment stays off until it is
+   set, because the webhook is what turns a payment into a pass. Admin →
+   Settings tells you which half is missing.
 4. **Class packs** sell immediately via Checkout (price taken from the product;
    optionally paste a Stripe Price ID on the product for Stripe-side pricing).
 5. **Memberships** are Stripe subscriptions: create a recurring Price in Stripe,

@@ -50,7 +50,7 @@ test('Stripe redirect URLs inherit the proxied scheme', async () => {
   const db = testDb();
   const created = [];
   const stripeService = createStripeService({
-    env: { STRIPE_SECRET_KEY: 'sk_test_x' },
+    env: { STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_x' },
     client: {
       checkout: { sessions: { create: async (p) => { created.push(p); return { id: 'cs_1', url: 'https://checkout.test/s' }; } } },
     },
