@@ -167,9 +167,16 @@ What's protected out of the box:
   30/15 min. Over the limit → friendly 429. Behind a reverse proxy, set
   `TRUST_PROXY=1` so limits key on the first `X-Forwarded-For` hop; without
   it that header is ignored (it's spoofable).
+- **Reverse-proxy awareness**: `TRUST_PROXY=1` also makes the app honour
+  `X-Forwarded-Proto`. TLS usually terminates at the proxy, so without it
+  every emailed magic link is built as `http://` — putting a 7-day auth token
+  on the wire in plaintext — and the session cookie never gets its `Secure`
+  flag. Set it, or pin `BASE_URL` to your https origin.
 - Passwords are bcrypt-hashed; client self-service uses expiring HMAC-signed
   magic links (no client passwords); sessions are signed `SameSite=Lax`
-  `HttpOnly` cookies; webhook fulfillment is idempotent.
+  `HttpOnly` cookies (`Secure` too, over https); webhook fulfillment is
+  idempotent. The staff login does the same bcrypt work whether or not the
+  email exists, so it can't be used to enumerate accounts.
 
 What's *not* there yet — plan accordingly:
 

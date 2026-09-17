@@ -29,6 +29,15 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
   app.set('views', path.join(__dirname, '..', 'views'));
   app.disable('x-powered-by');
 
+  // Behind a TLS-terminating proxy the socket is plain HTTP, so req.protocol
+  // reads 'http' and every emailed magic link ships a 7-day auth token over
+  // plaintext. Honouring X-Forwarded-Proto is what makes baseUrl() correct.
+  // TRUST_PROXY is a hop count ('1') or any Express trust-proxy value.
+  if (env.TRUST_PROXY) {
+    const n = Number(env.TRUST_PROXY);
+    app.set('trust proxy', Number.isInteger(n) && n > 0 ? n : env.TRUST_PROXY);
+  }
+
   const services = {
     db,
     mailer: mailer || createMailer({ env }),
@@ -56,7 +65,10 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
 
   // View locals: settings + formatting helpers, refreshed per request.
   app.use((req, res, next) => {
-    const s = allSettings(db);
+    // app_secret signs the session cookie and every magic-link token, so it
+    // stays out of the object every template can reach. No view renders it
+    // today; this is so none can start to.
+    const { app_secret: _secret, ...s } = allSettings(db);
     res.locals.settings = s;
     res.locals.tz = s.timezone || 'Asia/Hong_Kong';
     res.locals.currency = s.currency || 'HKD';

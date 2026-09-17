@@ -18,10 +18,17 @@ export function createUser(db, { email, password, name = '', role = 'staff' }) {
   return info.lastInsertRowid;
 }
 
+// Returning early for an unknown email skips bcrypt entirely, which answers in
+// microseconds instead of tens of milliseconds and turns the login form into a
+// staff-email oracle. Comparing against a throwaway hash of the same cost keeps
+// both paths the same shape. /magic-link already refuses to leak which emails
+// exist; this is the same promise on the staff side.
+const DUMMY_HASH = bcrypt.hashSync('password-that-is-never-valid', 10);
+
 export function authenticate(db, email, password) {
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(String(email || '').trim().toLowerCase());
-  if (!user) return null;
-  return verifyPassword(String(password || ''), user.password_hash) ? user : null;
+  const ok = verifyPassword(String(password || ''), user ? user.password_hash : DUMMY_HASH);
+  return user && ok ? user : null;
 }
 
 // --- magic links -----------------------------------------------------------
