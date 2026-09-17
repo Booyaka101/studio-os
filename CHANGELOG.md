@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+- **Security: magic links were emailed as `http://` behind a reverse proxy.**
+  `TRUST_PROXY` was read by the rate limiter but Express's own `trust proxy`
+  setting was never applied, so with TLS terminating at the proxy
+  `req.protocol` read `http` and every emailed link carried its 7-day auth
+  token over plaintext. Stripe's success/cancel redirects had the same scheme.
+  Setting `TRUST_PROXY=1` now also makes the app honour `X-Forwarded-Proto`,
+  and the session cookie picks up its `Secure` flag over https (it stays off
+  on plain http, so local dev is unchanged). If you run behind Caddy/nginx/
+  Traefik, set `TRUST_PROXY=1` or pin `BASE_URL` to your https origin.
+- **Security: the staff login could enumerate accounts.** `authenticate()`
+  returned early for an unknown email and skipped bcrypt entirely, answering
+  ~3000x faster than for a real one. Both paths now do one bcrypt comparison.
+  `app_secret` is also no longer reachable from templates.
+- **Membership credit cycles drifted for end-of-month joins.** Cycles were
+  stepped from the previous cycle, so February's day clamp compounded: a
+  membership joined on the 31st became the 28th and stayed there. Cycles now
+  anchor on the join date (31 Jan, 28 Feb, 31 Mar). Correcting an
+  already-drifted membership does not refill its credits mid-month.
+- **Dependencies**: stripe 16 → 22, nodemailer 9 → 10 (clears
+  GHSA-8m3c-c648-2xjj), marked → 18.0.13. `npm audit` is clean.
+- **Tests**: 110 → 123. The Stripe and mailer suites only ever ran against a
+  mock client and the offline outbox, so neither package was imported under
+  test and a major bump could not have failed CI. New tests exercise the real
+  packages, including webhook signature verification.
+- README and SPEC said Node 20+; `engines` requires >=22.
+
 ## 0.2.0 — 2026-07-28
 
 - **Instructor logins.** New `instructor` user role alongside the existing
