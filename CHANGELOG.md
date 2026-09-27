@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.5.0 — 2026-09-27
+
+**Upgrading:** the database migrates itself on start (schema v4, one new
+column on `payments`). Drop-in dues recorded before the upgrade aren't linked
+to a booking, so they won't clear themselves if that booking is cancelled.
+Check Payments for any stale pending ones.
+
+- **Editing a weekly rule moved nothing and doubled the schedule.** Changing
+  a rule's day or time left every future class at the old slot and then
+  generated a second set at the new one. Empty future classes now move with
+  the rule, and booked ones stay put with a note saying how many. A malformed
+  time used to save, 500, and then break the daily generator for every rule.
+  It's rejected now.
+- **Drop-in dues were charged to people who never got a spot.** Booking
+  onto the waitlist recorded a pending drop-in payment, and cancelling never
+  removed one. Dues are now tied to the booking: recorded when the client
+  holds a spot (including when the waitlist promotes them), dropped when
+  they cancel in time or the studio cancels the class. A forfeited late
+  cancel still owes, same as it would lose a pack credit.
+- **The waitlist got promoted into classes that had already started.** A
+  late cancel or a staff roster edit after start time moved the next person
+  in and charged them for a class they'd missed. Clients also can't cancel
+  once a class has started. Staff still can, to tidy the roster.
+- **The booking form renamed existing clients.** Anyone who typed a known
+  email with a different name overwrote that client's name. An existing
+  client now keeps theirs.
+- **Edit a single class.** The roster page can change one class's capacity,
+  instructor and notes. Extra capacity goes to the waitlist in order, and
+  those clients are emailed.
+- A two-credit class said "1 credit deducted". The purchase thank-you page
+  said the pass was active before Stripe had confirmed the payment.
+- **Dependencies**: dotenv → 18.0.4, marked → 18.0.14, nodemailer → 10.0.11,
+  supertest → 7.3.0.
+- **Tests**: 135 → 144.
+
 ## 0.4.0 — 2026-09-27
 
 **Upgrading with Stripe:** add `checkout.session.async_payment_succeeded` and
