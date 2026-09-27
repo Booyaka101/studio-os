@@ -198,6 +198,26 @@ test('full class books to waitlist via HTTP', async () => {
   assert.match(second.text, /You're #2 in line/);
 });
 
+test('drop-in dues: nothing owed on the waitlist, and a cancelled booking owes nothing', async () => {
+  const { db, app } = makeApp();
+  const inst = makeInstance(db, makeClassType(db, { capacity: 1, price: 15000 }), { hoursFromNow: 48 });
+  const agent = request.agent(app);
+  const _csrf = await csrfToken(agent, `/class/${inst}`);
+  for (const email of ['first@t.hk', 'second@t.hk']) {
+    await agent.post(`/class/${inst}/book`).type('form').send({ email, waiver_agree: '1', _csrf });
+  }
+  const owing = () => db.prepare(
+    `SELECT c.email FROM payments p JOIN clients c ON c.id = p.client_id
+     WHERE p.status = 'pending' ORDER BY p.id`
+  ).all().map((r) => r.email);
+  assert.deepEqual(owing(), ['first@t.hk']);
+
+  const { cancelBooking } = await import('../src/services/booking.js');
+  const first = db.prepare("SELECT id FROM bookings WHERE status = 'booked'").get();
+  cancelBooking(db, first.id);
+  assert.deepEqual(owing(), ['second@t.hk']);
+});
+
 test('magic link: verify round-trip, view bookings, cancel within policy', async () => {
   const { db, app } = makeApp();
   const type = makeClassType(db, { name: 'Spin' });

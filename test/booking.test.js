@@ -283,6 +283,37 @@ test('once a class has started, clients cannot cancel and nobody is promoted int
   assert.equal(getPass(db, waiting).credits_remaining, 5);
 });
 
+test('a pay-at-studio drop-in is owed only while the client holds a spot', () => {
+  const db = testDb();
+  const inst = makeInstance(db, makeClassType(db, { capacity: 1, price: 15000 }), { hoursFromNow: 48 });
+  const c1 = makeClient(db); const c2 = makeClient(db);
+  const dues = () => db.prepare(
+    "SELECT client_id, amount_cents FROM payments WHERE status = 'pending' ORDER BY id"
+  ).all();
+
+  const first = book(db, c1, inst, { recordDue: true });
+  assert.ok(first.paymentId);
+  const waiting = book(db, c2, inst, { recordDue: true });
+  assert.equal(waiting.paymentId, null, 'the waitlist owes nothing yet');
+  assert.deepEqual(dues(), [{ client_id: c1, amount_cents: 15000 }]);
+
+  // c1 cancels in time: their due goes, and c2 owes from the moment they're promoted.
+  cancelBooking(db, first.booking.id);
+  assert.deepEqual(dues(), [{ client_id: c2, amount_cents: 15000 }]);
+
+  // The studio cancelling the class clears it too.
+  cancelClass(db, inst);
+  assert.deepEqual(dues(), []);
+});
+
+test('a late cancel under the forfeit policy still owes the drop-in', () => {
+  const db = testDb();
+  const inst = makeInstance(db, makeClassType(db, { price: 15000 }), { hoursFromNow: 2 });
+  const { booking } = book(db, makeClient(db), inst, { recordDue: true });
+  cancelBooking(db, booking.id);
+  assert.equal(db.prepare("SELECT COUNT(*) c FROM payments WHERE status = 'pending'").get().c, 1);
+});
+
 test('promotion re-resolves payment if the waitlisted client acquired a membership meanwhile', () => {
   const db = testDb();
   const type = makeClassType(db, { capacity: 1 });
