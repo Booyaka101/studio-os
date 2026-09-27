@@ -8,18 +8,14 @@ import { emails } from '../services/mailer.js';
 
 function findOrCreateClient(db, name, email) {
   const cleanEmail = String(email || '').trim().toLowerCase();
-  let client = db.prepare('SELECT * FROM clients WHERE email = ?').get(cleanEmail);
-  if (!client) {
-    const info = db.prepare(
-      "INSERT INTO clients (name, email, source) VALUES (?, ?, 'self')"
-    ).run(String(name || cleanEmail.split('@')[0]).trim(), cleanEmail);
-    client = db.prepare('SELECT * FROM clients WHERE id = ?').get(info.lastInsertRowid);
-  } else if (name && name.trim() && client.name !== name.trim()) {
-    // keep the freshest name the client typed
-    db.prepare('UPDATE clients SET name = ? WHERE id = ?').run(name.trim(), client.id);
-    client.name = name.trim();
-  }
-  return client;
+  const client = db.prepare('SELECT * FROM clients WHERE email = ?').get(cleanEmail);
+  // An existing client keeps their name. The form proves nothing about who's
+  // typing, so it can't be allowed to rename whoever owns the address.
+  if (client) return client;
+  const info = db.prepare(
+    "INSERT INTO clients (name, email, source) VALUES (?, ?, 'self')"
+  ).run(String(name || cleanEmail.split('@')[0]).trim(), cleanEmail);
+  return db.prepare('SELECT * FROM clients WHERE id = ?').get(info.lastInsertRowid);
 }
 
 function loadInstanceFull(db, id) {
