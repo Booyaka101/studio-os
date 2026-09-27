@@ -399,6 +399,69 @@ test('admin: editing a rule moves its empty classes instead of adding a second s
   assert.equal(db.prepare('SELECT start_time FROM schedule_rules WHERE id = ?').get(ruleId).start_time, '19:00');
 });
 
+test('admin: a class type capacity change reaches upcoming classes still at the old size', async () => {
+  const { db, app } = makeApp();
+  const agent = request.agent(app);
+  const _csrf = await adminLogin(agent);
+  const { book } = await import('../src/services/booking.js');
+  const type = makeClassType(db, { name: 'Barre', capacity: 1 });
+  const booked = makeInstance(db, type, { hoursFromNow: 48 });
+  const handSized = makeInstance(db, type, { hoursFromNow: 72, capacity: 5 });
+  const past = makeInstance(db, type, { hoursFromNow: -24 });
+  const ruleId = db.prepare(
+    "INSERT INTO schedule_rules (class_type_id, weekday, start_time, capacity_override) VALUES (?, 1, '09:00', 1)"
+  ).run(type).lastInsertRowid;
+  const fromRule = makeInstance(db, type, { hoursFromNow: 96 });
+  db.prepare('UPDATE class_instances SET rule_id = ? WHERE id = ?').run(ruleId, fromRule);
+  book(db, makeClient(db, { email: 'first@type.hk' }), booked);
+  const { booking: wl } = book(db, makeClient(db, { email: 'waiting@type.hk' }), booked);
+  const capacity = (id) => db.prepare('SELECT capacity FROM class_instances WHERE id = ?').get(id).capacity;
+
+  const res = await agent.post(`/admin/class-types/${type}`).type('form')
+    .send({ name: 'Barre', capacity: '2', drop_in_price: '150', _csrf });
+  assert.equal(res.status, 302);
+  assert.deepEqual([booked, handSized, past, fromRule].map(capacity), [2, 5, 1, 1]);
+  assert.equal(db.prepare('SELECT status FROM bookings WHERE id = ?').get(wl.id).status, 'booked');
+  assert.match((await agent.get('/admin/class-types')).text, /1 upcoming class\(es\) resized, 1 moved up from the waitlist/);
+  await new Promise((r) => setTimeout(r, 100));
+  const mails = fs.readdirSync(OUTBOX).map((f) => fs.readFileSync(path.join(OUTBOX, f), 'utf8'));
+  assert.ok(mails.some((m) => m.includes('To: waiting@type.hk')));
+
+  const bad = await agent.post(`/admin/class-types/${type}`).type('form')
+    .send({ name: 'Barre', capacity: '-3', _csrf });
+  assert.equal(bad.status, 302);
+  assert.equal(db.prepare('SELECT capacity FROM class_types WHERE id = ?').get(type).capacity, 2);
+});
+
+test('admin: a rule capacity change reaches its booked classes too', async () => {
+  const { db, app } = makeApp();
+  const agent = request.agent(app);
+  const _csrf = await adminLogin(agent);
+  const { book } = await import('../src/services/booking.js');
+  const type = makeClassType(db, { name: 'Reformer', capacity: 1 });
+  await agent.post('/admin/rules').type('form').send({
+    class_type_id: String(type), weekday: '2', start_time: '07:00', _csrf,
+  });
+  const ruleId = db.prepare('SELECT id FROM schedule_rules').get().id;
+  const next = db.prepare('SELECT id FROM class_instances WHERE rule_id = ? ORDER BY starts_at').get(ruleId).id;
+  book(db, makeClient(db, { email: 'first@rule.hk' }), next);
+  const { booking: wl } = book(db, makeClient(db, { email: 'waiting@rule.hk' }), next);
+
+  const res = await agent.post(`/admin/rules/${ruleId}`).type('form').send({
+    class_type_id: String(type), weekday: '2', start_time: '07:00', capacity_override: '3', _csrf,
+  });
+  assert.equal(res.status, 302);
+  const caps = db.prepare('SELECT DISTINCT capacity FROM class_instances WHERE rule_id = ?').pluck().all(ruleId);
+  assert.deepEqual(caps, [3]);
+  assert.equal(db.prepare('SELECT status FROM bookings WHERE id = ?').get(wl.id).status, 'booked');
+
+  const bad = await agent.post(`/admin/rules/${ruleId}`).type('form').send({
+    class_type_id: String(type), weekday: '2', start_time: '07:00', capacity_override: '-1', _csrf,
+  });
+  assert.equal(bad.status, 302, 'a negative override is a flash, not a 500');
+  assert.equal(db.prepare('SELECT capacity_override FROM schedule_rules WHERE id = ?').get(ruleId).capacity_override, 3);
+});
+
 test('admin: manual pass sale + payment, revenue report and CSV export', async () => {
   const { db, app } = makeApp();
   const agent = request.agent(app);

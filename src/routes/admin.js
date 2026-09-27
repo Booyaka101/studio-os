@@ -76,16 +76,46 @@ export default function adminRoutes(services) {
     res.redirect('/admin/class-types');
   });
 
+  // Future classes still at the old size follow a capacity change, and anyone
+  // who moves up from the waitlist is emailed. A class resized by hand on its
+  // roster keeps its own number.
+  function resizeFuture(req, res, instanceIds, capacity) {
+    const results = db.transaction(() => instanceIds.map((id) => updateInstance(db, id, { capacity })))();
+    let promoted = 0;
+    for (const { instance, promoted: rows } of results) {
+      for (const p of rows) notifyPromoted(services, req, res, p, instance);
+      promoted += rows.length;
+    }
+    return promoted;
+  }
+  const resizedNote = (count, promoted) => (count
+    ? ` ${count} upcoming class(es) resized${promoted ? `, ${promoted} moved up from the waitlist and emailed` : ''}.`
+    : '');
+
   r.post('/class-types/:id', (req, res) => {
     const b = req.body;
     if (b.action === 'toggle') {
       db.prepare('UPDATE class_types SET active = 1 - active WHERE id = ?').run(req.params.id);
     } else {
+      const capacity = Number(b.capacity || 10);
+      if (!Number.isInteger(capacity) || capacity < 1) {
+        req.session.flash = 'Capacity must be a whole number, at least 1.';
+        return res.redirect('/admin/class-types');
+      }
+      const type = db.prepare('SELECT capacity FROM class_types WHERE id = ?').get(req.params.id);
+      if (!type) return res.redirect('/admin/class-types');
       db.prepare(
         'UPDATE class_types SET name=?, description=?, duration_min=?, capacity=?, drop_in_price_cents=?, credits_required=?, color=? WHERE id=?'
-      ).run(b.name, b.description || '', Number(b.duration_min) || 60, Number(b.capacity) || 10,
+      ).run(b.name, b.description || '', Number(b.duration_min) || 60, capacity,
         Math.round(Number(b.drop_in_price || 0) * 100), Number(b.credits_required) || 1,
         b.color || '#4f7cac', req.params.id);
+      const ids = capacity === type.capacity ? [] : db.prepare(
+        `SELECT ci.id FROM class_instances ci LEFT JOIN schedule_rules sr ON sr.id = ci.rule_id
+         WHERE ci.class_type_id = ? AND ci.status = 'scheduled' AND ci.starts_at > ?
+         AND ci.capacity = ? AND sr.capacity_override IS NULL`
+      ).pluck().all(req.params.id, new Date().toISOString(), type.capacity);
+      const promoted = resizeFuture(req, res, ids, capacity);
+      req.session.flash = `Class type updated.${resizedNote(ids.length, promoted)}`;
     }
     audit(db, who(req), 'class_type_update', `class_type:${req.params.id}`);
     res.redirect('/admin/class-types');
@@ -243,15 +273,31 @@ export default function adminRoutes(services) {
         req.session.flash = 'Start time must be HH:MM.';
         return res.redirect('/admin/rules');
       }
+      const override = b.capacity_override ? Number(b.capacity_override) : null;
+      if (override !== null && (!Number.isInteger(override) || override < 1)) {
+        req.session.flash = 'Capacity override must be a whole number, at least 1.';
+        return res.redirect('/admin/rules');
+      }
+      const effectiveCapacity = (ruleId) => db.prepare(
+        `SELECT COALESCE(sr.capacity_override, ct.capacity) FROM schedule_rules sr
+         JOIN class_types ct ON ct.id = sr.class_type_id WHERE sr.id = ?`
+      ).pluck().get(ruleId);
+      const before = effectiveCapacity(req.params.id);
       db.transaction(() => {
         db.prepare(
           'UPDATE schedule_rules SET class_type_id=?, instructor_id=?, weekday=?, start_time=?, capacity_override=?, active_from=?, active_until=? WHERE id=?'
         ).run(Number(b.class_type_id), Number(b.instructor_id) || null, Number(b.weekday),
-          b.start_time, Number(b.capacity_override) || null, b.active_from || null,
+          b.start_time, override, b.active_from || null,
           b.active_until || null, req.params.id);
         dropUnbookedFutureInstances(req.params.id);
         generateInstances(db);
       })();
+      const after = effectiveCapacity(req.params.id);
+      const ids = after === before ? [] : db.prepare(
+        `SELECT id FROM class_instances WHERE rule_id = ? AND class_type_id = ? AND status = 'scheduled'
+         AND starts_at > ? AND capacity = ?`
+      ).pluck().all(req.params.id, Number(b.class_type_id), new Date().toISOString(), before);
+      const promoted = resizeFuture(req, res, ids, after);
       // Booked classes stay where they were, so say if any are now off-pattern.
       const tz = getSetting(db, 'timezone', 'Asia/Hong_Kong');
       const stranded = db.prepare(
@@ -260,9 +306,9 @@ export default function adminRoutes(services) {
         weekdayOf(localDateStr(tz, ci.starts_at)) !== Number(b.weekday)
         || localTimeStr(tz, ci.starts_at) !== b.start_time
       )).length;
-      req.session.flash = stranded
+      req.session.flash = (stranded
         ? `Rule updated. ${stranded} booked class(es) are still at the old time; cancel them from the schedule if they've moved.`
-        : 'Rule updated and schedule regenerated.';
+        : 'Rule updated and schedule regenerated.') + resizedNote(ids.length, promoted);
     }
     audit(db, who(req), 'rule_update', `rule:${req.params.id}`);
     res.redirect('/admin/rules');
