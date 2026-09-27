@@ -31,7 +31,7 @@
       <label>Description <input name="description" value="<%= t.description %>"></label>
       <div class="grid">
         <label>Duration <input type="number" name="duration_min" value="<%= t.duration_min %>"></label>
-        <label>Capacity <input type="number" name="capacity" value="<%= t.capacity %>"></label>
+        <label>Capacity <input type="number" name="capacity" value="<%= t.capacity %>" min="1"></label>
         <label>Drop-in price <input type="number" name="drop_in_price" value="<%= (t.drop_in_price_cents / 100).toFixed(2) %>" step="0.01"></label>
         <label>Credits <input type="number" name="credits_required" value="<%= t.credits_required %>"></label>
       </div>

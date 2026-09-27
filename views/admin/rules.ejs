@@ -57,7 +57,7 @@
         <label>Start <input name="start_time" value="<%= rule.start_time %>"></label>
       </div>
       <div class="grid">
-        <label>Capacity override <input type="number" name="capacity_override" value="<%= rule.capacity_override || '' %>"></label>
+        <label>Capacity override <input type="number" name="capacity_override" value="<%= rule.capacity_override || '' %>" min="1" placeholder="(class default)"></label>
         <label>Active from <input type="date" name="active_from" value="<%= rule.active_from || '' %>"></label>
         <label>Active until <input type="date" name="active_until" value="<%= rule.active_until || '' %>"></label>
       </div>
