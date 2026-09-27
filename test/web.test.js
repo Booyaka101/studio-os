@@ -178,6 +178,11 @@ test('full class books to waitlist via HTTP', async () => {
     .send({ email: 'b@t.hk', waiver_agree: '1', name: 'B', _csrf });
   assert.equal(res.status, 200);
   assert.match(res.text, /waitlist/i);
+  assert.match(res.text, /You're #1 in line/);
+
+  const second = await agent.post(`/class/${inst}/book`).type('form')
+    .send({ email: 'c@t.hk', waiver_agree: '1', name: 'C', _csrf });
+  assert.match(second.text, /You're #2 in line/);
 });
 
 test('magic link: verify round-trip, view bookings, cancel within policy', async () => {

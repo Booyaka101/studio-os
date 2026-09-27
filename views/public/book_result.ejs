@@ -3,7 +3,7 @@
   <% if (result.waitlisted) { %>
     <h2>You're on the waitlist</h2>
     <p><strong><%= inst.class_name %></strong> on <%= fmtDt(inst.starts_at) %> is currently full.
-       You're #<%= result.booking.id ? '' : '' %> in line — if a spot opens we'll book you in automatically<%= smtpConfigured ? ' and email you' : '' %>.</p>
+       You're #<%= waitlistPosition %> in line — if a spot opens we'll book you in automatically<%= smtpConfigured ? ' and email you' : '' %>.</p>
   <% } else { %>
     <h2>You're booked!</h2>
     <p><strong><%= inst.class_name %></strong> · <%= fmtDt(inst.starts_at) %></p>

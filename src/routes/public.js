@@ -117,12 +117,19 @@ export default function publicRoutes(services) {
           });
       mailer.send({ to: result.client.email, ...tpl });
 
+      // Same order promoteNext() uses to pick who gets the next free spot.
+      const b = result.booking;
+      const waitlistPosition = result.waitlisted ? db.prepare(
+        `SELECT COUNT(*) c FROM bookings WHERE class_instance_id = ? AND status = 'waitlist'
+           AND (created_at < ? OR (created_at = ? AND id <= ?))`
+      ).get(inst.id, b.created_at, b.created_at, b.id).c : null;
+
       // Booking needs nothing but an email, so the link can't go on screen when
       // it can go to the inbox: anyone who knows a client's address could book
       // a class in their name and walk off with their self-service link.
       res.render('public/book_result', {
         title: result.waitlisted ? 'Waitlisted' : 'Booked',
-        inst, result, magicUrl: mailer.smtpConfigured ? null : magicUrl,
+        inst, result, magicUrl: mailer.smtpConfigured ? null : magicUrl, waitlistPosition,
       });
     } catch (err) {
       if (err instanceof BookingError) {
