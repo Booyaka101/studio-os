@@ -170,7 +170,9 @@ What's protected out of the box:
   authenticated by Stripe's signature over the raw body instead.
 - **Rate limiting** (in-memory fixed window, per IP + route): magic-link
   requests 5/15 min, admin login 10/15 min, public booking/buy POSTs
-  30/15 min. Over the limit → friendly 429. Behind a reverse proxy, set
+  30/15 min, and 1000/15 min across the whole app. IPv6 clients are
+  counted per /56, so rotating addresses doesn't reset the count. Over the
+  limit → friendly 429. Behind a reverse proxy, set
   `TRUST_PROXY=1` so limits key on the first `X-Forwarded-For` hop; without
   it that header is ignored (it's spoofable).
 - **Reverse-proxy awareness**: `TRUST_PROXY=1` also makes the app honour

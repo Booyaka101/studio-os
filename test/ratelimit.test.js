@@ -121,3 +121,31 @@ test('X-Forwarded-For is ignored unless TRUST_PROXY is set', async () => {
     .set('X-Forwarded-For', '2.2.2.2').send({ email: 'a@t.test', _csrf: csrf2 });
   assert.equal(otherIp.status, 200, 'different forwarded IP has its own bucket');
 });
+
+test('one IPv6 host cannot dodge the limit by rotating addresses', async () => {
+  const { app } = makeApp({ env: { TRUST_PROXY: '1' }, now: () => 10 * WINDOW });
+  const agent = request.agent(app);
+  const _csrf = await csrfToken(agent, '/magic-link');
+  const statuses = [];
+  for (let i = 1; i <= 6; i++) {
+    const res = await agent.post('/magic-link').type('form')
+      .set('X-Forwarded-For', `2001:db8:0:1::${i}`).send({ email: 'a@t.test', _csrf });
+    statuses.push(res.status);
+  }
+  assert.deepEqual(statuses, [200, 200, 200, 200, 200, 429]);
+});
+
+test('every route sits under a 1000 per 15 min ceiling; static files do not count', async () => {
+  let t = 10 * WINDOW;
+  const { app } = makeApp({ now: () => t });
+  const agent = request.agent(app);
+  for (let i = 0; i < 50; i++) assert.equal((await agent.get('/css/custom.css')).status, 200);
+  for (let i = 1; i <= 1000; i++) {
+    const res = await agent.get('/magic-link');
+    if (res.status !== 200) assert.fail(`request ${i} got ${res.status}`);
+  }
+  const blocked = await agent.get('/admin');
+  assert.equal(blocked.status, 429);
+  t += WINDOW;
+  assert.equal((await agent.get('/magic-link')).status, 200);
+});

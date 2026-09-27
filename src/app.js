@@ -58,6 +58,12 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
   app.use('/admin/import', express.urlencoded({ extended: true, limit: '20mb' }));
   app.use(express.urlencoded({ extended: true }));
   app.use(express.static(path.join(__dirname, '..', 'public')));
+  // A ceiling on everything else, well above what a busy front desk or a
+  // shared studio wifi does. Static files don't count, and the Stripe
+  // webhook is mounted before this so a burst of events is never refused.
+  app.use(createRateLimiter({
+    windowMs: 15 * 60 * 1000, max: 1000, env, now, perRoute: false,
+  }));
   app.use(cookieSession({
     name: 'studio_session',
     keys: [getSetting(db, 'app_secret', 'dev-secret')],
