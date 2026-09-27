@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.6.0 — 2026-09-27
+
+**Upgrading:** in the Stripe dashboard, add `customer.subscription.updated`
+to your webhook endpoint's events. Without it, failed renewals still won't
+pause memberships. No database changes.
+
+- **A failed renewal left the membership active.** When a card was declined
+  the subscription went past due, but the client kept booking on it. The
+  membership now pauses until the payment goes through, and resumes by
+  itself when it does.
+- **Pausing or cancelling a Stripe membership didn't stop the billing.**
+  The buttons on the client page only changed the app's record. They now
+  pause, resume or cancel the subscription itself, and if Stripe says no,
+  nothing changes. An unrecognised status used to 500.
+- **Capacity changes skipped classes already on the schedule.** Raising a
+  class type's capacity, or a rule's override, left every class already
+  generated at the old size. Upcoming classes still at that size now follow,
+  and the extra spots go to the waitlist, same as editing one class.
+  Classes resized by hand keep their own number.
+- **Rate limiting on every route.** Magic links, login and booking already
+  had tight limits. Everything else now sits under a 1000 requests per
+  15 minutes ceiling per address, well above what a busy front desk uses.
+  IPv6 clients are counted per /56, so rotating addresses no longer gets
+  around any limit.
+- **A long junk email could stall the server.** The email check backtracked
+  on a 50kb input for about a second, blocking every other request. It's
+  linear now.
+- **Dependencies**: express-rate-limit 8.7.0 added.
+- **Tests**: 144 → 151.
+
 ## 0.5.0 — 2026-09-27
 
 **Upgrading:** the database migrates itself on start (schema v4, one new
