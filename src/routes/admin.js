@@ -6,10 +6,11 @@ import { requireAdmin, makeMagicToken, createUser } from '../services/auth.js';
 import { getSetting, setSetting, audit } from '../db/index.js';
 import { generateInstances, upcomingInstances } from '../services/schedule.js';
 import {
-  book, cancelBooking, cancelClass, markAttendance, BookingError,
+  book, cancelBooking, cancelClass, markAttendance, updateInstance, BookingError,
 } from '../services/booking.js';
 import { importClients, importPasses } from '../services/importer.js';
 import { emails } from '../services/mailer.js';
+import { notifyPromoted } from '../services/notify.js';
 import { localDateStr, localTimeStr, zonedToUtc, addDays, weekdayOf } from '../lib/time.js';
 
 export default function adminRoutes(services) {
@@ -335,7 +336,10 @@ export default function adminRoutes(services) {
       `SELECT b.*, c.name AS client_name, c.email FROM bookings b JOIN clients c ON c.id = b.client_id
        WHERE b.class_instance_id = ? AND b.status = 'waitlist' ORDER BY b.created_at`
     ).all(inst.id);
-    res.render('admin/roster', { title: `Roster — ${inst.class_name}`, inst, roster, waitlist });
+    // A retired instructor still shows as the current one, so saving doesn't unassign them.
+    const instructors = db.prepare('SELECT * FROM instructors WHERE active = 1 OR id = ? ORDER BY name')
+      .all(inst.instructor_id);
+    res.render('admin/roster', { title: `Roster — ${inst.class_name}`, inst, roster, waitlist, instructors });
   });
 
   r.post('/bookings/:id/status', (req, res) => {
@@ -345,18 +349,7 @@ export default function adminRoutes(services) {
     try {
       if (status === 'cancelled') {
         const result = cancelBooking(db, booking.id, { forceRefund: req.body.refund === '1', allowPast: true });
-        if (result.promoted) {
-          const c = db.prepare('SELECT * FROM clients WHERE id = ?').get(result.promoted.client_id);
-          const inst = result.instance;
-          const magicUrl = `${services.baseUrl(req)}/me?token=${makeMagicToken(db, c.id)}`;
-          mailer.send({
-            to: c.email,
-            ...emails.waitlistPromotion({
-              studio: getSetting(db, 'studio_name', ''), clientName: c.name,
-              className: inst.class_name, when: res.locals.fmtDt(inst.starts_at), magicUrl,
-            }),
-          });
-        }
+        if (result.promoted) notifyPromoted(services, req, res, result.promoted, result.instance);
       } else {
         markAttendance(db, booking.id, status);
       }
@@ -366,6 +359,28 @@ export default function adminRoutes(services) {
       req.session.flash = err.message;
     }
     res.redirect(`/admin/instances/${booking.class_instance_id}`);
+  });
+
+  r.post('/instances/:id/edit', (req, res) => {
+    const b = req.body;
+    const instructorId = Number(b.instructor_id) || null;
+    try {
+      if (instructorId && !db.prepare('SELECT id FROM instructors WHERE id = ?').get(instructorId)) {
+        throw new BookingError('bad_instructor', 'Unknown instructor.');
+      }
+      const { instance, promoted } = updateInstance(db, Number(req.params.id), {
+        capacity: Number(b.capacity), instructor_id: instructorId, notes: String(b.notes || '').trim(),
+      });
+      for (const p of promoted) notifyPromoted(services, req, res, p, instance);
+      audit(db, who(req), 'instance_update', `instance:${instance.id} capacity:${instance.capacity}`);
+      req.session.flash = promoted.length
+        ? `Class updated. ${promoted.length} moved up from the waitlist and emailed.`
+        : 'Class updated.';
+    } catch (err) {
+      if (!(err instanceof BookingError)) throw err;
+      req.session.flash = err.message;
+    }
+    res.redirect(`/admin/instances/${req.params.id}`);
   });
 
   r.post('/instances/:id/walkin', (req, res) => {

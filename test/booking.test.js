@@ -5,7 +5,7 @@ import {
   getPass, getBooking, getMembership,
 } from './helpers.js';
 import {
-  book, cancelBooking, cancelClass, markAttendance, resolvePayment, BookingError,
+  book, cancelBooking, cancelClass, markAttendance, resolvePayment, updateInstance, BookingError,
 } from '../src/services/booking.js';
 
 test('booking deducts a pack credit at booking time, in the same transaction', () => {
@@ -395,4 +395,31 @@ test('capacity race: concurrent-style bookings never exceed capacity (transactio
   ).get(inst).c;
   assert.equal(booked, 5);
   assert.equal(wait, 15);
+});
+
+test('raising a class capacity fills the new spots from the waitlist, in order', () => {
+  const db = testDb();
+  const now = '2026-10-01T10:00:00Z';
+  const inst = makeInstance(db, makeClassType(db, { capacity: 1 }), { now, hoursFromNow: 24 });
+  const [c1, c2, c3, c4] = [1, 2, 3, 4].map(() => makeClient(db));
+  const passes = [c2, c3, c4].map((c) => makePass(db, c, { total: 5 }));
+  const [, b2, b3, b4] = [c1, c2, c3, c4].map((c) => book(db, c, inst, { now }).booking);
+
+  const res = updateInstance(db, inst, { capacity: 3 }, { now });
+  assert.deepEqual(res.promoted.map((b) => b.id), [b2.id, b3.id]);
+  assert.equal(getPass(db, passes[0]).credits_remaining, 4);
+  assert.equal(getPass(db, passes[1]).credits_remaining, 4);
+  assert.equal(getBooking(db, b4.id).status, 'waitlist');
+  assert.equal(getPass(db, passes[2]).credits_remaining, 5);
+
+  // Shrinking the room cancels nobody.
+  assert.deepEqual(updateInstance(db, inst, { capacity: 1 }, { now }).promoted, []);
+  assert.equal(db.prepare("SELECT COUNT(*) c FROM bookings WHERE status = 'booked'").get().c, 3);
+
+  // Nor does anyone get pulled into a class that has already started.
+  assert.deepEqual(updateInstance(db, inst, { capacity: 10 }, { now: '2026-10-02T11:00:00Z' }).promoted, []);
+  assert.equal(getBooking(db, b4.id).status, 'waitlist');
+
+  assert.throws(() => updateInstance(db, inst, { capacity: 0 }, { now }),
+    (e) => e instanceof BookingError && e.code === 'bad_capacity');
 });

@@ -1,9 +1,10 @@
 // Client self-service via signed magic links. No passwords.
 import { Router } from 'express';
-import { verifyMagicToken, makeMagicToken } from '../services/auth.js';
+import { verifyMagicToken } from '../services/auth.js';
 import { cancelBooking, BookingError } from '../services/booking.js';
 import { getSetting, audit } from '../db/index.js';
 import { emails } from '../services/mailer.js';
+import { notifyPromoted } from '../services/notify.js';
 
 export default function meRoutes(services) {
   const { db, mailer } = services;
@@ -76,14 +77,7 @@ export default function meRoutes(services) {
         to: client.email,
         ...emails.cancellation({ studio, clientName: client.name, className: inst.class_name, when, refunded: result.refunded }),
       });
-      if (result.promoted) {
-        const promotedClient = db.prepare('SELECT * FROM clients WHERE id = ?').get(result.promoted.client_id);
-        const magicUrl = `${services.baseUrl(req)}/me?token=${makeMagicToken(db, promotedClient.id)}`;
-        mailer.send({
-          to: promotedClient.email,
-          ...emails.waitlistPromotion({ studio, clientName: promotedClient.name, className: inst.class_name, when, magicUrl }),
-        });
-      }
+      if (result.promoted) notifyPromoted(services, req, res, result.promoted, inst);
       req.session.flash = result.refunded
         ? 'Booking cancelled — your credit has been returned.'
         : (result.late ? 'Booking cancelled. This was a late cancellation, so the credit was not returned.' : 'Booking cancelled.');

@@ -5,6 +5,7 @@
      <% if (inst.instructor_name) { %> · <%= inst.instructor_name %><% } %>
      <% if (inst.status === 'cancelled') { %> · <mark>CANCELLED</mark><% } %></p>
 </hgroup>
+<% if (inst.notes) { %><p><small><%= inst.notes %></small></p><% } %>
 <table>
   <thead><tr><th>Client</th><th>Paid with</th><th>Status</th><th>Actions</th></tr></thead>
   <tbody>
@@ -37,6 +38,24 @@
     </li>
   <% } %>
   </ol>
+<% } %>
+<% if (inst.status === 'scheduled') { %>
+<details>
+  <summary role="button" class="outline">Edit class</summary>
+  <form method="post" action="/admin/instances/<%= inst.id %>/edit"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="grid">
+      <label>Capacity <input type="number" name="capacity" min="1" required value="<%= inst.capacity %>"></label>
+      <label>Instructor
+        <select name="instructor_id"><option value="">—</option>
+          <% for (const i of instructors) { %><option value="<%= i.id %>" <%= i.id === inst.instructor_id ? 'selected' : '' %>><%= i.name %></option><% } %>
+        </select>
+      </label>
+    </div>
+    <label>Notes <input name="notes" value="<%= inst.notes || '' %>"></label>
+    <small>Extra spots go to the waitlist in order, and they're emailed.</small>
+    <button>Save</button>
+  </form>
+</details>
 <% } %>
 <details>
   <summary role="button" class="outline">Add walk-in</summary>
