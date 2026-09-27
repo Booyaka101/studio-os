@@ -161,11 +161,44 @@ export function fulfillCheckoutSession(db, session) {
   })();
 }
 
+/**
+ * Record a membership renewal payment. The subscription's first invoice was
+ * already recorded from its Checkout session, so only later cycles count.
+ * Idempotent via payments.stripe_invoice_id.
+ */
+export function recordMembershipRenewal(db, invoice) {
+  if (invoice.billing_reason === 'subscription_create') return { fulfilled: false, reason: 'first_invoice' };
+  // Newer API versions moved this under parent.subscription_details, and a
+  // webhook payload follows the endpoint's API version, so read both.
+  const subscriptionId = (invoice.parent && invoice.parent.subscription_details
+    && invoice.parent.subscription_details.subscription) || invoice.subscription;
+  if (!subscriptionId) return { fulfilled: false, reason: 'not_a_subscription' };
+  if (!invoice.amount_paid) return { fulfilled: false, reason: 'nothing_paid' };
+
+  return db.transaction(() => {
+    const membership = db.prepare('SELECT * FROM memberships WHERE stripe_subscription_id = ?').get(subscriptionId);
+    if (!membership) return { fulfilled: false, reason: 'unknown_subscription' };
+    const existing = db.prepare('SELECT id FROM payments WHERE stripe_invoice_id = ?').get(invoice.id);
+    if (existing) return { fulfilled: false, reason: 'already_processed' };
+
+    const currency = (invoice.currency || getSetting(db, 'currency', 'HKD')).toUpperCase();
+    db.prepare(
+      `INSERT INTO payments (client_id, amount_cents, currency, method, reference, what, status, stripe_invoice_id)
+       VALUES (?, ?, ?, 'stripe', ?, 'membership', 'paid', ?)`
+    ).run(membership.client_id, invoice.amount_paid, currency, membership.plan_name, invoice.id);
+    audit(db, 'stripe-webhook', 'membership_renewed', `membership:${membership.id} invoice:${invoice.id}`);
+    return { fulfilled: true, kind: 'membership_renewal', clientId: membership.client_id };
+  })();
+}
+
 /** Handle a parsed Stripe event. Returns a result object for logging. */
 export function handleStripeEvent(db, event) {
   if (event.type === 'checkout.session.completed'
       || event.type === 'checkout.session.async_payment_succeeded') {
     return fulfillCheckoutSession(db, event.data.object);
+  }
+  if (event.type === 'invoice.paid') {
+    return recordMembershipRenewal(db, event.data.object);
   }
   if (event.type === 'customer.subscription.deleted') {
     const sub = event.data.object;

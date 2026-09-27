@@ -135,9 +135,10 @@ activate purchases manually from the client profile — fully usable cash-only.
    - `STRIPE_PUBLISHABLE_KEY`
    - `STRIPE_WEBHOOK_SECRET` — see step 3
 3. Add a webhook endpoint in Stripe: `https://your-domain/webhooks/stripe`,
-   events `checkout.session.completed`, `checkout.session.async_payment_succeeded`
-   and `customer.subscription.deleted`. The async event is what fulfils
-   payments that clear later, like bank debits; card-only studios never see it.
+   events `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+   `invoice.paid` and `customer.subscription.deleted`. The async event is what
+   fulfils payments that clear later, like bank debits; card-only studios never
+   see it. `invoice.paid` records each membership renewal in the revenue report.
    Copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
    (Local testing: `stripe listen --forward-to localhost:3000/webhooks/stripe`.)
    The webhook secret is not optional: online payment stays off until it is
