@@ -12,6 +12,7 @@ import { importClients, importPasses } from '../services/importer.js';
 import { emails } from '../services/mailer.js';
 import { notifyPromoted } from '../services/notify.js';
 import { localDateStr, localTimeStr, zonedToUtc, addDays, weekdayOf } from '../lib/time.js';
+import { isEmail } from '../lib/email.js';
 
 export default function adminRoutes(services) {
   const { db, mailer } = services;
@@ -117,7 +118,7 @@ export default function adminRoutes(services) {
   r.post('/instructors/new', (req, res) => {
     const email = String(req.body.email || '').trim().toLowerCase();
     const password = String(req.body.password || '');
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || password.length < 8) {
+    if (!isEmail(email) || password.length < 8) {
       return res.status(400).render('admin/instructor_new', {
         title: 'New instructor login',
         error: 'A valid email and a password of at least 8 characters are required.',
@@ -386,7 +387,7 @@ export default function adminRoutes(services) {
   r.post('/instances/:id/walkin', (req, res) => {
     const email = String(req.body.email || '').trim().toLowerCase();
     const name = String(req.body.name || '').trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    if (!isEmail(email)) {
       req.session.flash = 'A valid email is required for walk-ins.';
       return res.redirect(`/admin/instances/${req.params.id}`);
     }
@@ -425,7 +426,7 @@ export default function adminRoutes(services) {
 
   r.post('/clients', (req, res) => {
     const email = String(req.body.email || '').trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    if (!isEmail(email)) {
       req.session.flash = 'A valid email is required.';
       return res.redirect('/admin/clients');
     }

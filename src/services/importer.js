@@ -1,6 +1,7 @@
 // Mindbody CSV importer core. Used by scripts/import-mindbody.mjs and the
 // admin import page. Idempotent by client email: re-running updates, never
 // duplicates. No external CSV dependency — small RFC-4180-ish parser below.
+import { isEmail } from '../lib/email.js';
 
 /** Parse CSV text into an array of row objects keyed by header. Handles quoted
  *  fields, embedded commas/newlines, and doubled quotes. */
@@ -96,7 +97,7 @@ export function importClients(db, csvText, { mapping = DEFAULT_MAPPING.clients, 
   const work = db.transaction(() => {
     for (const row of rows) {
       const email = pick(row, mapping.email).toLowerCase();
-      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      if (!isEmail(email)) {
         result.skipped++;
         result.rows.push({ action: 'skip', reason: 'missing/invalid email', row });
         continue;
@@ -148,7 +149,7 @@ export function importPasses(db, csvText, { mapping = DEFAULT_MAPPING.passes, dr
   const work = db.transaction(() => {
     for (const row of rows) {
       const email = pick(row, mapping.email).toLowerCase();
-      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      if (!isEmail(email)) {
         result.skipped++;
         result.rows.push({ action: 'skip', reason: 'missing/invalid email', row });
         continue;

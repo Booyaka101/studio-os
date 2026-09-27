@@ -5,6 +5,7 @@ import { upcomingInstances } from '../services/schedule.js';
 import { book, resolvePayment, BookingError } from '../services/booking.js';
 import { makeMagicToken } from '../services/auth.js';
 import { emails } from '../services/mailer.js';
+import { isEmail } from '../lib/email.js';
 
 function findOrCreateClient(db, name, email) {
   const cleanEmail = String(email || '').trim().toLowerCase();
@@ -73,7 +74,7 @@ export default function publicRoutes(services) {
       error, form: { name, email },
     });
 
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return renderErr('A valid email is required.');
+    if (!isEmail(email)) return renderErr('A valid email is required.');
 
     try {
       const result = db.transaction(() => {
@@ -143,7 +144,7 @@ export default function publicRoutes(services) {
     const product = db.prepare('SELECT * FROM pack_products WHERE id = ? AND active = 1').get(req.params.id);
     if (!product) return res.status(404).render('error', { title: 'Not found', message: 'Pack not found.' });
     const email = String(req.body.email || '').trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    if (!isEmail(email)) {
       return res.status(400).render('public/buy_manual', { title: 'Buy', product, plan: null, email: null, error: 'A valid email is required.' });
     }
     if (services.stripe.checkoutReady) {
@@ -164,7 +165,7 @@ export default function publicRoutes(services) {
     const plan = db.prepare('SELECT * FROM membership_plans WHERE id = ? AND active = 1').get(req.params.id);
     if (!plan) return res.status(404).render('error', { title: 'Not found', message: 'Plan not found.' });
     const email = String(req.body.email || '').trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    if (!isEmail(email)) {
       return res.status(400).render('public/buy_manual', { title: 'Buy', product: null, plan, email: null, error: 'A valid email is required.' });
     }
     if (services.stripe.checkoutReady && plan.stripe_price_id) {
