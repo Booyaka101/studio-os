@@ -5,7 +5,7 @@
 **Upgrading:** the database migrates itself on start (schema v4, one new
 column on `payments`). Drop-in dues recorded before the upgrade aren't linked
 to a booking, so they won't clear themselves if that booking is cancelled.
-Check Payments for any stale pending ones.
+Check the dashboard's Pending payments for stale ones.
 
 - **Editing a weekly rule moved nothing and doubled the schedule.** Changing
   a rule's day or time left every future class at the old slot and then
