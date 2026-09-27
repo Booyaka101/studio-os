@@ -279,6 +279,42 @@ test('admin: rules CRUD generates instances; roster check-in works over HTTP', a
   assert.equal(db.prepare('SELECT status FROM bookings WHERE id=?').get(booking.id).status, 'attended');
 });
 
+test('admin: editing a rule moves its empty classes instead of adding a second slot', async () => {
+  const { db, app } = makeApp();
+  const agent = request.agent(app);
+  const _csrf = await adminLogin(agent);
+  const { book } = await import('../src/services/booking.js');
+  const { localTimeStr } = await import('../src/lib/time.js');
+
+  const type = makeClassType(db, { name: 'Pilates' });
+  await agent.post('/admin/rules').type('form').send({
+    class_type_id: String(type), weekday: '4', start_time: '18:00', _csrf,
+  });
+  const ruleId = db.prepare('SELECT id FROM schedule_rules').get().id;
+  const nowIso = new Date().toISOString();
+  const future = () => db.prepare(
+    'SELECT starts_at FROM class_instances WHERE rule_id = ? AND starts_at > ? ORDER BY starts_at'
+  ).all(ruleId, nowIso).map((ci) => localTimeStr('Asia/Hong_Kong', ci.starts_at));
+  const slots = future().length;
+  const last = db.prepare('SELECT id FROM class_instances WHERE rule_id = ? ORDER BY starts_at DESC').get(ruleId).id;
+  book(db, makeClient(db), last);
+
+  const edit = await agent.post(`/admin/rules/${ruleId}`).type('form').send({
+    class_type_id: String(type), weekday: '4', start_time: '19:00', _csrf,
+  });
+  assert.equal(edit.status, 302);
+  const times = future();
+  assert.equal(times.filter((t) => t === '18:00').length, 1, 'only the booked class stays at the old time');
+  assert.equal(times.filter((t) => t === '19:00').length, slots);
+  assert.match((await agent.get('/admin/rules')).text, /1 booked class\(es\) are still at the old time/);
+
+  const bad = await agent.post(`/admin/rules/${ruleId}`).type('form').send({
+    class_type_id: String(type), weekday: '4', start_time: 'seven', _csrf,
+  });
+  assert.equal(bad.status, 302);
+  assert.equal(db.prepare('SELECT start_time FROM schedule_rules WHERE id = ?').get(ruleId).start_time, '19:00');
+});
+
 test('admin: manual pass sale + payment, revenue report and CSV export', async () => {
   const { db, app } = makeApp();
   const agent = request.agent(app);
