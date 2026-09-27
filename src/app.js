@@ -53,6 +53,9 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
   // before any body parser.
   app.use('/webhooks/stripe', express.raw({ type: '*/*' }), webhookRoutes(services));
 
+  // A pasted Mindbody client export is 100+ bytes a row once URL-encoded, so
+  // the 100kb default refused any studio with more than a few hundred clients.
+  app.use('/admin/import', express.urlencoded({ extended: true, limit: '20mb' }));
   app.use(express.urlencoded({ extended: true }));
   app.use(express.static(path.join(__dirname, '..', 'public')));
   app.use(cookieSession({
@@ -149,7 +152,11 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     console.error('[error]', err);
-    res.status(500).render('error', { title: 'Error', message: err.expose ? err.message : 'Something went wrong.' });
+    // Body-parser errors (oversized or malformed bodies) arrive before the
+    // locals middleware has run, and the layout can't render without these.
+    res.locals = { settings: {}, user: null, flash: null, ...res.locals };
+    const status = err.status >= 400 && err.status < 500 ? err.status : 500;
+    res.status(status).render('error', { title: 'Error', message: err.expose ? err.message : 'Something went wrong.' });
   });
 
   return app;

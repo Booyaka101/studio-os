@@ -10,7 +10,7 @@ export default function meRoutes(services) {
   const r = Router();
 
   function requireClient(req, res) {
-    const token = req.query.token || req.body.token;
+    const token = req.query.token || (req.body && req.body.token);
     const clientId = verifyMagicToken(db, token);
     if (!clientId) {
       res.status(401).render('public/magic_request', {
