@@ -262,6 +262,27 @@ test('cancelling a waitlist booking does not promote or refund', () => {
   assert.equal(res.promoted, null);
 });
 
+test('once a class has started, clients cannot cancel and nobody is promoted into it', () => {
+  const db = testDb();
+  const now = '2026-10-01T10:00:00Z';
+  const inst = makeInstance(db, makeClassType(db, { capacity: 1 }), { now, hoursFromNow: 2 });
+  const c1 = makeClient(db); const c2 = makeClient(db);
+  const waiting = makePass(db, c2, { total: 5 });
+  const { booking } = book(db, c1, inst, { now });
+  const { booking: wl } = book(db, c2, inst, { now });
+  const afterClass = '2026-10-01T13:30:00Z';
+
+  assert.throws(() => cancelBooking(db, booking.id, { now: afterClass }),
+    (e) => e instanceof BookingError && e.code === 'in_past');
+
+  // Staff tidying the roster afterwards still can, without dragging the
+  // waitlist into a class that's over.
+  const res = cancelBooking(db, booking.id, { now: afterClass, allowPast: true });
+  assert.equal(res.promoted, null);
+  assert.equal(getBooking(db, wl.id).status, 'waitlist');
+  assert.equal(getPass(db, waiting).credits_remaining, 5);
+});
+
 test('promotion re-resolves payment if the waitlisted client acquired a membership meanwhile', () => {
   const db = testDb();
   const type = makeClassType(db, { capacity: 1 });

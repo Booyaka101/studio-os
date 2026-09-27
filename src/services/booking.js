@@ -195,7 +195,9 @@ function promoteNext(db, inst, nowIso) {
 
 /**
  * Cancel a booking. Within the cancellation window → credit refunded; late →
- * per policy (default forfeit). Auto-promotes the first waitlisted booking.
+ * per policy (default forfeit). Auto-promotes the first waitlisted booking
+ * while the class has yet to start. { allowPast } lets staff tidy a roster
+ * after the fact.
  * Returns { booking, refunded, late, promoted } (promoted = booking row or null).
  */
 export function cancelBooking(db, bookingId, options = {}) {
@@ -207,6 +209,8 @@ export function cancelBooking(db, bookingId, options = {}) {
       throw new BookingError('not_cancellable', `Cannot cancel a ${booking.status} booking`);
     }
     const inst = loadInstance(db, booking.class_instance_id);
+    const started = inst.starts_at <= nowIso;
+    if (started && !options.allowPast) throw new BookingError('in_past', 'Class has already started');
     const windowHours = Number(getSetting(db, 'cancellation_window_hours', '12'));
     const policy = getSetting(db, 'late_cancel_policy', 'forfeit');
     const hoursToStart = hoursBetween(nowIso, inst.starts_at);
@@ -222,9 +226,10 @@ export function cancelBooking(db, bookingId, options = {}) {
     db.prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = ? WHERE id = ?")
       .run(nowIso, bookingId);
 
-    // A freed confirmed spot promotes the first waitlisted booking.
+    // A freed confirmed spot promotes the first waitlisted booking, but not
+    // into a class that's already running: they'd be charged for missing it.
     let promoted = null;
-    if (wasBooked && bookedCount(db, inst.id) < inst.capacity) {
+    if (wasBooked && !started && bookedCount(db, inst.id) < inst.capacity) {
       promoted = promoteNext(db, inst, nowIso);
     }
     return { booking: { ...booking, status: 'cancelled', cancelled_at: nowIso }, refunded, late, promoted, instance: inst };

@@ -323,7 +323,7 @@ export default function adminRoutes(services) {
     const status = req.body.status;
     try {
       if (status === 'cancelled') {
-        const result = cancelBooking(db, booking.id, { forceRefund: req.body.refund === '1' });
+        const result = cancelBooking(db, booking.id, { forceRefund: req.body.refund === '1', allowPast: true });
         if (result.promoted) {
           const c = db.prepare('SELECT * FROM clients WHERE id = ?').get(result.promoted.client_id);
           const inst = result.instance;
