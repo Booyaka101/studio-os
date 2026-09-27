@@ -15,7 +15,7 @@ import { localDateStr, localTimeStr, zonedToUtc, addDays, weekdayOf } from '../l
 import { isEmail } from '../lib/email.js';
 
 export default function adminRoutes(services) {
-  const { db, mailer } = services;
+  const { db, mailer, stripe } = services;
   const r = Router();
   r.use(requireAdmin);
 
@@ -496,13 +496,29 @@ export default function adminRoutes(services) {
     res.redirect(`/admin/clients/${req.params.id}`);
   });
 
-  r.post('/clients/:id/memberships', (req, res) => {
+  r.post('/clients/:id/memberships', async (req, res) => {
     const b = req.body;
     if (b.action === 'status' && b.membership_id) {
-      db.prepare('UPDATE memberships SET status = ? WHERE id = ? AND client_id = ?')
-        .run(b.status, b.membership_id, req.params.id);
-      audit(db, who(req), 'membership_status', `membership:${b.membership_id} → ${b.status}`);
-      return res.redirect(`/admin/clients/${req.params.id}`);
+      const back = `/admin/clients/${req.params.id}`;
+      const m = db.prepare('SELECT * FROM memberships WHERE id = ? AND client_id = ?')
+        .get(b.membership_id, req.params.id);
+      if (!m || !['active', 'paused', 'cancelled'].includes(b.status)) {
+        req.session.flash = 'Membership or status not recognised.';
+        return res.redirect(back);
+      }
+      if (m.stripe_subscription_id && !stripe.configured) {
+        req.session.flash = "Stripe isn't configured, so the subscription behind this membership wasn't changed. Change it in the Stripe dashboard too.";
+      } else if (m.stripe_subscription_id) {
+        try {
+          await stripe.setSubscriptionStatus(m.stripe_subscription_id, b.status);
+        } catch (err) {
+          req.session.flash = `Stripe refused the change, so nothing changed here either: ${err.message}`;
+          return res.redirect(back);
+        }
+      }
+      db.prepare('UPDATE memberships SET status = ? WHERE id = ?').run(b.status, m.id);
+      audit(db, who(req), 'membership_status', `membership:${m.id} → ${b.status}`);
+      return res.redirect(back);
     }
     const tz = getSetting(db, 'timezone', 'Asia/Hong_Kong');
     const today = localDateStr(tz);

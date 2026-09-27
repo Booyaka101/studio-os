@@ -8,14 +8,23 @@ import { createStripeService, fulfillCheckoutSession } from '../src/services/str
 import { createMailer } from '../src/services/mailer.js';
 import { createUser } from '../src/services/auth.js';
 import { openDb, setSetting } from '../src/db/index.js';
+import { csrfToken } from './helpers.js';
 
 const VALID_SIG = 't=123,v1=goodsignature';
 
 /** Mock of the stripe npm client: signature check + checkout session capture. */
 function mockStripeClient() {
   const created = [];
-  return {
+  const subscriptionCalls = [];
+  const client = {
     created,
+    subscriptionCalls,
+    failNext: null,
+    subscriptions: {
+      async update(id, params) { return call(['update', id, params]); },
+      async cancel(id) { return call(['cancel', id]); },
+      async retrieve(id) { return { id, status: 'active' }; },
+    },
     checkout: {
       sessions: {
         create: async (params) => {
@@ -32,6 +41,16 @@ function mockStripeClient() {
       },
     },
   };
+  function call(entry) {
+    if (client.failNext) {
+      const err = client.failNext;
+      client.failNext = null;
+      throw err;
+    }
+    subscriptionCalls.push(entry);
+    return { id: entry[1] };
+  }
+  return client;
 }
 
 function makeApp() {
@@ -245,6 +264,76 @@ test('customer.subscription.deleted cancels the matching membership', async () =
   assert.equal(res.status, 200);
   assert.equal(res.body.fulfilled, true);
   assert.equal(db.prepare('SELECT status FROM memberships WHERE client_id = ?').get(clientId).status, 'cancelled');
+});
+
+function membershipWithSub(db, subId, status = 'active') {
+  const clientId = db.prepare(
+    "INSERT INTO clients (name, email, source) VALUES ('M', ?, 'self')"
+  ).run(`${subId}@test.hk`).lastInsertRowid;
+  const id = db.prepare(
+    `INSERT INTO memberships (client_id, plan_name, status, started_on, stripe_subscription_id, unlimited)
+     VALUES (?, 'Unlimited', ?, '2026-07-01', ?, 1)`
+  ).run(clientId, status, subId).lastInsertRowid;
+  return { clientId, id, status: () => db.prepare('SELECT status FROM memberships WHERE id = ?').get(id).status };
+}
+
+test('a failed renewal pauses the membership until the card goes through', async () => {
+  const { db, app } = makeApp();
+  const m = membershipWithSub(db, 'sub_dunning');
+  const updated = (status, previous) => postEvent(app, {
+    type: 'customer.subscription.updated',
+    data: { object: { id: 'sub_dunning', status }, previous_attributes: previous },
+  });
+
+  await updated('past_due', { status: 'active' });
+  assert.equal(m.status(), 'paused');
+  await updated('active', { status: 'past_due' });
+  assert.equal(m.status(), 'active');
+
+  // A renewal also fires .updated, without a status change. It must not
+  // undo a pause staff set in the app.
+  db.prepare("UPDATE memberships SET status = 'paused' WHERE id = ?").run(m.id);
+  const renewal = await updated('active', { current_period_end: 1790000000 });
+  assert.equal(renewal.body.reason, 'no_status_change');
+  assert.equal(m.status(), 'paused');
+
+  db.prepare("UPDATE memberships SET status = 'cancelled' WHERE id = ?").run(m.id);
+  await updated('active', { status: 'past_due' });
+  assert.equal(m.status(), 'cancelled', 'a cancelled membership stays cancelled');
+});
+
+test('staff pausing, resuming or cancelling a Stripe membership changes the subscription too', async () => {
+  const { db, app, client } = makeApp();
+  const m = membershipWithSub(db, 'sub_staff');
+  const agent = request.agent(app);
+  let _csrf = await csrfToken(agent, '/admin/login');
+  await agent.post('/admin/login').type('form').send({ email: 'owner@test.test', password: 'password123', _csrf });
+  _csrf = await csrfToken(agent, `/admin/clients/${m.clientId}`);
+  const setStatus = (status) => agent.post(`/admin/clients/${m.clientId}/memberships`).type('form')
+    .send({ action: 'status', membership_id: String(m.id), status, _csrf });
+
+  await setStatus('paused');
+  assert.equal(m.status(), 'paused');
+  await setStatus('active');
+  assert.equal(m.status(), 'active');
+  assert.deepEqual(client.subscriptionCalls, [
+    ['update', 'sub_staff', { pause_collection: { behavior: 'void' } }],
+    ['update', 'sub_staff', { pause_collection: '' }],
+  ]);
+
+  // Stripe saying no leaves the membership as it was.
+  client.failNext = Object.assign(new Error('card_declined'), { code: 'card_declined' });
+  const refused = await setStatus('paused');
+  assert.equal(refused.status, 302);
+  assert.equal(m.status(), 'active');
+
+  const bogus = await setStatus('frozen');
+  assert.equal(bogus.status, 302, 'an unknown status is a flash, not a 500');
+  assert.equal(m.status(), 'active');
+
+  await setStatus('cancelled');
+  assert.equal(m.status(), 'cancelled');
+  assert.deepEqual(client.subscriptionCalls.at(-1), ['cancel', 'sub_staff']);
 });
 
 test('drop-in checkout marks the pending payment paid', async () => {

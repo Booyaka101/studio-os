@@ -67,6 +67,29 @@ export function createStripeService({ env = process.env, client } = {}) {
       });
     },
 
+    /**
+     * Carry a staff status change over to the membership's subscription, so a
+     * cancelled or paused member stops being billed. Pausing voids invoices
+     * rather than deferring them.
+     */
+    async setSubscriptionStatus(subscriptionId, status) {
+      const s = await getClient();
+      if (status !== 'cancelled') {
+        return s.subscriptions.update(subscriptionId, {
+          pause_collection: status === 'paused' ? { behavior: 'void' } : '',
+        });
+      }
+      try {
+        return await s.subscriptions.cancel(subscriptionId);
+      } catch (err) {
+        // Already cancelled at Stripe's end is what we wanted anyway.
+        if (err.code === 'resource_missing') return null;
+        const sub = await s.subscriptions.retrieve(subscriptionId);
+        if (sub.status !== 'canceled') throw err;
+        return sub;
+      }
+    },
+
     /** Verify webhook signature and return the event. Throws on bad signature. */
     async parseWebhook(rawBody, signature) {
       const s = await getClient();
@@ -191,6 +214,31 @@ export function recordMembershipRenewal(db, invoice) {
   })();
 }
 
+// Subscription status → membership status. A failed renewal pauses the
+// membership, so it stops covering classes until the card goes through.
+const MEMBERSHIP_STATUS = {
+  active: 'active', trialing: 'active',
+  past_due: 'paused', unpaid: 'paused', paused: 'paused',
+  canceled: 'cancelled', incomplete_expired: 'cancelled',
+};
+
+/**
+ * Follow a subscription's status onto its membership. Only an actual status
+ * change counts: every renewal fires customer.subscription.updated too, and
+ * those mustn't undo a pause staff set in the app. A cancelled membership
+ * stays cancelled.
+ */
+function followSubscriptionStatus(db, sub, previous) {
+  const status = MEMBERSHIP_STATUS[sub.status];
+  if (!('status' in previous) || !status) return { fulfilled: false, reason: 'no_status_change' };
+  const r = db.prepare(
+    "UPDATE memberships SET status = ? WHERE stripe_subscription_id = ? AND status != 'cancelled'"
+  ).run(status, sub.id);
+  if (!r.changes) return { fulfilled: false, reason: 'unknown_subscription' };
+  audit(db, 'stripe-webhook', 'subscription_status', `${sub.id} ${previous.status} → ${sub.status}`);
+  return { fulfilled: true, kind: 'subscription_status', status };
+}
+
 /** Handle a parsed Stripe event. Returns a result object for logging. */
 export function handleStripeEvent(db, event) {
   if (event.type === 'checkout.session.completed'
@@ -207,6 +255,9 @@ export function handleStripeEvent(db, event) {
     ).run(sub.id);
     audit(db, 'stripe-webhook', 'subscription_cancelled', sub.id);
     return { fulfilled: r.changes > 0, kind: 'subscription_cancelled' };
+  }
+  if (event.type === 'customer.subscription.updated') {
+    return followSubscriptionStatus(db, event.data.object, event.data.previous_attributes || {});
   }
   return { fulfilled: false, reason: `ignored event ${event.type}` };
 }
