@@ -31,7 +31,7 @@ Check the dashboard's Pending payments for stale ones.
   those clients are emailed.
 - A two-credit class said "1 credit deducted". The purchase thank-you page
   said the pass was active before Stripe had confirmed the payment.
-- **Dependencies**: dotenv → 18.0.4, marked → 18.0.14, nodemailer → 10.0.11,
+- **Dependencies**: dotenv → 18.0.3, marked → 18.0.14, nodemailer → 10.0.10,
   supertest → 7.3.0.
 - **Tests**: 135 → 144.
 
