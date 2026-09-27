@@ -86,6 +86,9 @@ export function fulfillCheckoutSession(db, session) {
   const email = (meta.client_email || session.customer_email
     || (session.customer_details && session.customer_details.email) || '').toLowerCase();
   if (!email) throw new Error('Checkout session has no client email');
+  // Bank debits and other delayed methods complete the session before the money
+  // arrives. checkout.session.async_payment_succeeded brings it back as 'paid'.
+  if (session.payment_status === 'unpaid') return { fulfilled: false, reason: 'awaiting_payment' };
 
   return db.transaction(() => {
     const existing = db.prepare('SELECT id FROM payments WHERE stripe_session_id = ?').get(session.id);
@@ -160,7 +163,8 @@ export function fulfillCheckoutSession(db, session) {
 
 /** Handle a parsed Stripe event. Returns a result object for logging. */
 export function handleStripeEvent(db, event) {
-  if (event.type === 'checkout.session.completed') {
+  if (event.type === 'checkout.session.completed'
+      || event.type === 'checkout.session.async_payment_succeeded') {
     return fulfillCheckoutSession(db, event.data.object);
   }
   if (event.type === 'customer.subscription.deleted') {
