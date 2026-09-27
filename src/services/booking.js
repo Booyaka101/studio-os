@@ -257,6 +257,32 @@ export function cancelBooking(db, bookingId, options = {}) {
   })();
 }
 
+/**
+ * Staff edit of a single class. Extra capacity before the class starts is
+ * filled from the waitlist, first come first served. Lowering it below the
+ * booked count cancels nobody. Returns { instance, promoted } (promoted = rows).
+ */
+export function updateInstance(db, instanceId, changes, options = {}) {
+  const nowIso = options.now || new Date().toISOString();
+  return db.transaction(() => {
+    const inst = { ...loadInstance(db, instanceId), ...changes };
+    if (!Number.isInteger(inst.capacity) || inst.capacity < 1) {
+      throw new BookingError('bad_capacity', 'Capacity must be a whole number, at least 1');
+    }
+    db.prepare('UPDATE class_instances SET capacity = ?, instructor_id = ?, notes = ? WHERE id = ?')
+      .run(inst.capacity, inst.instructor_id, inst.notes, instanceId);
+    const promoted = [];
+    if (inst.status === 'scheduled' && inst.starts_at > nowIso) {
+      while (bookedCount(db, instanceId) < inst.capacity) {
+        const next = promoteNext(db, inst, nowIso);
+        if (!next) break;
+        promoted.push(next);
+      }
+    }
+    return { instance: inst, promoted };
+  })();
+}
+
 /** Staff roster actions. */
 export function markAttendance(db, bookingId, status) {
   if (!['attended', 'no_show', 'booked'].includes(status)) {

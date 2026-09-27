@@ -218,6 +218,34 @@ test('drop-in dues: nothing owed on the waitlist, and a cancelled booking owes n
   assert.deepEqual(owing(), ['second@t.hk']);
 });
 
+test('admin: editing a class from the roster moves the waitlist up and emails them', async () => {
+  const { db, app } = makeApp();
+  const agent = request.agent(app);
+  const _csrf = await adminLogin(agent);
+  const inst = makeInstance(db, makeClassType(db, { capacity: 1 }), { hoursFromNow: 48 });
+  const kim = db.prepare("INSERT INTO instructors (name) VALUES ('Kim')").run().lastInsertRowid;
+  const { book } = await import('../src/services/booking.js');
+  book(db, makeClient(db, { email: 'first@edit.hk' }), inst);
+  const { booking: wl } = book(db, makeClient(db, { email: 'waiting@edit.hk' }), inst);
+
+  const roster = await agent.get(`/admin/instances/${inst}`);
+  assert.match(roster.text, /Edit class/);
+  const res = await agent.post(`/admin/instances/${inst}/edit`).type('form')
+    .send({ capacity: '2', instructor_id: String(kim), notes: 'Room B', _csrf });
+  assert.equal(res.status, 302);
+  const row = db.prepare('SELECT capacity, instructor_id, notes FROM class_instances WHERE id = ?').get(inst);
+  assert.deepEqual({ ...row }, { capacity: 2, instructor_id: kim, notes: 'Room B' });
+  assert.equal(db.prepare('SELECT status FROM bookings WHERE id = ?').get(wl.id).status, 'booked');
+  await new Promise((r) => setTimeout(r, 100));
+  const mails = fs.readdirSync(OUTBOX).map((f) => fs.readFileSync(path.join(OUTBOX, f), 'utf8'));
+  assert.ok(mails.some((m) => m.includes('To: waiting@edit.hk') && m.includes('/me?token=')));
+
+  const bad = await agent.post(`/admin/instances/${inst}/edit`).type('form')
+    .send({ capacity: '2', instructor_id: '999', _csrf });
+  assert.equal(bad.status, 302, 'an unknown instructor is a flash, not a 500');
+  assert.equal(db.prepare('SELECT instructor_id FROM class_instances WHERE id = ?').get(inst).instructor_id, kim);
+});
+
 test('magic link: verify round-trip, view bookings, cancel within policy', async () => {
   const { db, app } = makeApp();
   const type = makeClassType(db, { name: 'Spin' });
