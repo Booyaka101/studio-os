@@ -10,7 +10,7 @@ import {
 } from '../services/booking.js';
 import { importClients, importPasses } from '../services/importer.js';
 import { emails } from '../services/mailer.js';
-import { localDateStr, zonedToUtc, addDays } from '../lib/time.js';
+import { localDateStr, localTimeStr, zonedToUtc, addDays, weekdayOf } from '../lib/time.js';
 
 export default function adminRoutes(services) {
   const { db, mailer } = services;
@@ -220,26 +220,47 @@ export default function adminRoutes(services) {
     res.redirect('/admin/rules');
   });
 
+  // Future classes from a rule that nobody has booked are safe to drop, and
+  // have to go when the rule changes or the old slot stays alongside the new.
+  const dropUnbookedFutureInstances = (ruleId) => db.prepare(
+    `DELETE FROM class_instances WHERE rule_id = ? AND starts_at > ? AND status = 'scheduled'
+     AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.class_instance_id = class_instances.id AND b.status != 'cancelled')`
+  ).run(ruleId, new Date().toISOString());
+
   r.post('/rules/:id', (req, res) => {
     const b = req.body;
     if (b.action === 'delete') {
       // keep past instances; drop future not-yet-booked ones from this rule
       db.transaction(() => {
         db.prepare('UPDATE schedule_rules SET active = 0 WHERE id = ?').run(req.params.id);
-        db.prepare(
-          `DELETE FROM class_instances WHERE rule_id = ? AND starts_at > ? AND status = 'scheduled'
-           AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.class_instance_id = class_instances.id AND b.status != 'cancelled')`
-        ).run(req.params.id, new Date().toISOString());
+        dropUnbookedFutureInstances(req.params.id);
       })();
       req.session.flash = 'Rule deactivated. Future empty instances removed; booked ones kept.';
     } else {
-      db.prepare(
-        'UPDATE schedule_rules SET class_type_id=?, instructor_id=?, weekday=?, start_time=?, capacity_override=?, active_from=?, active_until=? WHERE id=?'
-      ).run(Number(b.class_type_id), Number(b.instructor_id) || null, Number(b.weekday),
-        b.start_time, Number(b.capacity_override) || null, b.active_from || null,
-        b.active_until || null, req.params.id);
-      generateInstances(db);
-      req.session.flash = 'Rule updated and schedule regenerated.';
+      if (!/^\d{2}:\d{2}$/.test(b.start_time || '')) {
+        req.session.flash = 'Start time must be HH:MM.';
+        return res.redirect('/admin/rules');
+      }
+      db.transaction(() => {
+        db.prepare(
+          'UPDATE schedule_rules SET class_type_id=?, instructor_id=?, weekday=?, start_time=?, capacity_override=?, active_from=?, active_until=? WHERE id=?'
+        ).run(Number(b.class_type_id), Number(b.instructor_id) || null, Number(b.weekday),
+          b.start_time, Number(b.capacity_override) || null, b.active_from || null,
+          b.active_until || null, req.params.id);
+        dropUnbookedFutureInstances(req.params.id);
+        generateInstances(db);
+      })();
+      // Booked classes stay where they were, so say if any are now off-pattern.
+      const tz = getSetting(db, 'timezone', 'Asia/Hong_Kong');
+      const stranded = db.prepare(
+        "SELECT starts_at FROM class_instances WHERE rule_id = ? AND starts_at > ? AND status = 'scheduled'"
+      ).all(req.params.id, new Date().toISOString()).filter((ci) => (
+        weekdayOf(localDateStr(tz, ci.starts_at)) !== Number(b.weekday)
+        || localTimeStr(tz, ci.starts_at) !== b.start_time
+      )).length;
+      req.session.flash = stranded
+        ? `Rule updated. ${stranded} booked class(es) are still at the old time; cancel them from the schedule if they've moved.`
+        : 'Rule updated and schedule regenerated.';
     }
     audit(db, who(req), 'rule_update', `rule:${req.params.id}`);
     res.redirect('/admin/rules');
