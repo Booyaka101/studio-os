@@ -15,12 +15,12 @@
       <% } %>
     </p>
   <% } %>
-  <p>Manage or cancel your bookings any time:</p>
-  <p><a href="<%= magicUrl %>" role="button" class="outline">My bookings</a></p>
-  <% if (!smtpConfigured) { %>
+  <% if (magicUrl) { %>
+    <p>Manage or cancel your bookings any time:</p>
+    <p><a href="<%= magicUrl %>" role="button" class="outline">My bookings</a></p>
     <p><small>Save that link — it's your personal booking manager (valid 7 days; you can request a new one from “My bookings” in the menu).</small></p>
   <% } else { %>
-    <p><small>A confirmation email with your personal link is on its way.</small></p>
+    <p>A confirmation email with a link to manage or cancel your booking is on its way.</p>
   <% } %>
 </article>
 <%- include('../partials/foot') %>
