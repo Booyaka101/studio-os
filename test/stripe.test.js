@@ -176,6 +176,61 @@ test('membership checkout fulfillment: activates membership with subscription id
   assert.equal(payment.status, 'paid');
 });
 
+test('invoice.paid records each membership renewal once, but not the first month again', async () => {
+  const { db, app } = makeApp();
+  const planId = db.prepare(
+    "INSERT INTO membership_plans (name, price_cents, unlimited, stripe_price_id) VALUES ('Unlimited Monthly', 128000, 1, 'price_mock')"
+  ).run().lastInsertRowid;
+  await postEvent(app, checkoutCompleted({
+    id: 'cs_renew', amount_total: 128000, currency: 'hkd', subscription: 'sub_renew',
+    metadata: { kind: 'membership', plan_id: String(planId), client_email: 'renew@test.hk' },
+  }));
+  const invoicePaid = (invoice) => postEvent(app, { type: 'invoice.paid', data: { object: invoice } });
+  const payments = () => db.prepare("SELECT * FROM payments WHERE what = 'membership' ORDER BY id").all();
+
+  // Stripe also sends invoice.paid for the first month, which the Checkout
+  // session already recorded.
+  const first = await invoicePaid({
+    id: 'in_1', billing_reason: 'subscription_create', amount_paid: 128000, currency: 'hkd',
+    parent: { subscription_details: { subscription: 'sub_renew' } },
+  });
+  assert.equal(first.body.fulfilled, false);
+  assert.equal(payments().length, 1);
+
+  const renewal = {
+    id: 'in_2', billing_reason: 'subscription_cycle', amount_paid: 128000, currency: 'hkd',
+    parent: { subscription_details: { subscription: 'sub_renew' } },
+  };
+  const second = await invoicePaid(renewal);
+  assert.equal(second.body.fulfilled, true);
+  assert.equal(second.body.kind, 'membership_renewal');
+  const replay = await invoicePaid(renewal);
+  assert.equal(replay.body.reason, 'already_processed');
+
+  // Endpoints pinned to an older API version put the id at the top level.
+  const legacy = await invoicePaid({
+    id: 'in_3', billing_reason: 'subscription_cycle', amount_paid: 128000, currency: 'hkd',
+    subscription: 'sub_renew',
+  });
+  assert.equal(legacy.body.fulfilled, true);
+
+  const rows = payments();
+  assert.equal(rows.length, 3);
+  assert.deepEqual(rows.map((p) => p.stripe_invoice_id), [null, 'in_2', 'in_3']);
+  assert.ok(rows.every((p) => p.status === 'paid' && p.method === 'stripe' && p.amount_cents === 128000));
+});
+
+test('invoice.paid for a subscription Studio OS never sold is acknowledged and ignored', async () => {
+  const { db, app } = makeApp();
+  const res = await postEvent(app, {
+    type: 'invoice.paid',
+    data: { object: { id: 'in_other', billing_reason: 'subscription_cycle', amount_paid: 5000, subscription: 'sub_elsewhere' } },
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.reason, 'unknown_subscription');
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM payments').get().c, 0);
+});
+
 test('customer.subscription.deleted cancels the matching membership', async () => {
   const { db, app } = makeApp();
   const clientId = db.prepare(
@@ -230,7 +285,7 @@ test('fulfillment failure returns 500 so Stripe retries', async () => {
 
 test('unhandled event types are acknowledged and ignored', async () => {
   const { app } = makeApp();
-  const res = await postEvent(app, { type: 'invoice.paid', data: { object: {} } });
+  const res = await postEvent(app, { type: 'charge.refunded', data: { object: {} } });
   assert.equal(res.status, 200);
   assert.equal(res.body.fulfilled, false);
   assert.match(res.body.reason, /ignored event/);

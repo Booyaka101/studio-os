@@ -9,6 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS = [
   { version: 1, file: 'schema.sql' },
   { version: 2, file: '002-instructor-role.sql' },
+  { version: 3, file: '003-stripe-invoices.sql' },
 ];
 
 const DEFAULT_SETTINGS = {
