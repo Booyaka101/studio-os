@@ -8,7 +8,7 @@
     <h2>You're booked!</h2>
     <p><strong><%= inst.class_name %></strong> · <%= fmtDt(inst.starts_at) %></p>
     <p>Payment:
-      <% if (result.booking.paid_with === 'pack') { %>1 credit deducted from your class pack.
+      <% if (result.booking.paid_with === 'pack') { const n = result.instance.credits_required ?? 1; %><%= n %> credit<%= n === 1 ? '' : 's' %> deducted from your class pack.
       <% } else if (result.booking.paid_with === 'membership') { %>covered by your membership.
       <% } else if (result.paymentId) { %>please pay <%= fmtMoney(inst.drop_in_price_cents) %> at the studio (cash/FPS) before class.
       <% } else { %>drop-in.
