@@ -118,6 +118,20 @@ function refund(db, booking, creditsNeeded) {
   }
 }
 
+/** A pay-at-studio drop-in is owed once the client holds a spot. */
+function recordDropInDue(db, booking, inst) {
+  if (booking.paid_with !== 'drop_in_manual' || !(inst.drop_in_price_cents > 0)) return null;
+  return db.prepare(
+    `INSERT INTO payments (client_id, amount_cents, currency, method, reference, what, status, booking_id)
+     VALUES (?, ?, ?, 'other', ?, 'drop_in', 'pending', ?)`
+  ).run(booking.client_id, inst.drop_in_price_cents, getSetting(db, 'currency', 'HKD'),
+    `Drop-in: ${inst.class_name} ${inst.starts_at}`, booking.id).lastInsertRowid;
+}
+
+function dropDropInDue(db, bookingId) {
+  db.prepare("DELETE FROM payments WHERE booking_id = ? AND status = 'pending'").run(bookingId);
+}
+
 function loadInstance(db, instanceId) {
   const inst = db.prepare(
     `SELECT ci.*, ct.credits_required, ct.name AS class_name, ct.drop_in_price_cents
@@ -131,8 +145,9 @@ function loadInstance(db, instanceId) {
 /**
  * Book a client into a class instance.
  * options: { paidWith } to force ('drop_in_online'|'drop_in_manual'|'comp'),
- *          { now } ISO override for tests, { allowPast } for admin walk-ins.
- * Returns the booking row plus { waitlisted: bool }.
+ *          { now } ISO override for tests, { allowPast } for admin walk-ins,
+ *          { recordDue } to record a pending payment for a pay-at-studio drop-in.
+ * Returns the booking row plus { waitlisted: bool, paymentId }.
  */
 export function book(db, clientId, instanceId, options = {}) {
   const nowIso = options.now || new Date().toISOString();
@@ -172,7 +187,8 @@ export function book(db, clientId, instanceId, options = {}) {
       status === 'booked' ? resolution.membershipId ?? null : null,
       nowIso);
     const booking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(info.lastInsertRowid);
-    return { booking, waitlisted: full, instance: inst };
+    const paymentId = options.recordDue && !full ? recordDropInDue(db, booking, inst) : null;
+    return { booking, waitlisted: full, instance: inst, paymentId };
   })();
 }
 
@@ -190,7 +206,9 @@ function promoteNext(db, inst, nowIso) {
   db.prepare(
     'UPDATE bookings SET status = ?, paid_with = ?, pass_id = ?, membership_id = ? WHERE id = ?'
   ).run('booked', resolution.paidWith, resolution.passId ?? null, resolution.membershipId ?? null, next.id);
-  return db.prepare('SELECT * FROM bookings WHERE id = ?').get(next.id);
+  const promoted = db.prepare('SELECT * FROM bookings WHERE id = ?').get(next.id);
+  recordDropInDue(db, promoted, inst);
+  return promoted;
 }
 
 /**
@@ -218,11 +236,14 @@ export function cancelBooking(db, bookingId, options = {}) {
     const wasBooked = booking.status === 'booked';
     const creditsNeeded = inst.credits_required ?? 1;
 
+    const excused = !late || policy === 'refund' || options.forceRefund;
     let refunded = false;
-    if (wasBooked && (!late || policy === 'refund' || options.forceRefund)) {
+    if (wasBooked && excused) {
       refund(db, booking, creditsNeeded);
       refunded = booking.paid_with === 'pack' || booking.paid_with === 'membership';
     }
+    // A forfeited late cancel still owes its drop-in, as it would lose a credit.
+    if (excused) dropDropInDue(db, bookingId);
     db.prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = ? WHERE id = ?")
       .run(nowIso, bookingId);
 
@@ -263,6 +284,7 @@ export function cancelClass(db, instanceId, options = {}) {
     ).all(instanceId);
     for (const b of affected) {
       if (b.status === 'booked') refund(db, b, creditsNeeded);
+      dropDropInDue(db, b.id);
       db.prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = ? WHERE id = ?")
         .run(nowIso, b.id);
     }

@@ -86,20 +86,10 @@ export default function publicRoutes(services) {
           db.prepare('UPDATE clients SET waiver_signed_at = ? WHERE id = ?')
             .run(new Date().toISOString(), client.id);
         }
-        const booked = book(db, client.id, inst.id);
-        // Drop-in without membership/pack: record the pending manual payment.
-        let payment = null;
-        if (booked.booking.paid_with === 'drop_in_manual' && inst.drop_in_price_cents > 0) {
-          const info = db.prepare(
-            `INSERT INTO payments (client_id, amount_cents, currency, method, reference, what, status)
-             VALUES (?, ?, ?, 'other', ?, 'drop_in', 'pending')`
-          ).run(client.id, inst.drop_in_price_cents, getSetting(db, 'currency', 'HKD'),
-            `Drop-in: ${inst.class_name} ${inst.starts_at}`);
-          payment = info.lastInsertRowid;
-        }
+        const booked = book(db, client.id, inst.id, { recordDue: true });
         audit(db, client.email, booked.waitlisted ? 'waitlist_join' : 'booking_create',
           `instance:${inst.id} booking:${booked.booking.id}`);
-        return { client, ...booked, paymentId: payment };
+        return { client, ...booked };
       })();
 
       const magicUrl = `${services.baseUrl(req)}/me?token=${makeMagicToken(db, result.client.id)}`;
