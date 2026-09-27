@@ -121,6 +121,34 @@ test('replayed webhook is a no-op (idempotent by stripe_session_id)', async () =
   assert.equal(db.prepare('SELECT COUNT(*) c FROM payments').get().c, 1, 'no duplicate payment');
 });
 
+test('a delayed payment is fulfilled when it clears, not when checkout completes', async () => {
+  const { db, app } = makeApp();
+  const productId = db.prepare(
+    "INSERT INTO pack_products (name, credits, price_cents) VALUES ('5 Pack', 5, 55000)"
+  ).run().lastInsertRowid;
+  const session = {
+    id: 'cs_debit',
+    amount_total: 55000,
+    currency: 'hkd',
+    metadata: { kind: 'pack', pack_product_id: String(productId), client_email: 'debit@test.hk' },
+  };
+
+  const completed = await postEvent(app, checkoutCompleted({ ...session, payment_status: 'unpaid' }));
+  assert.equal(completed.status, 200);
+  assert.equal(completed.body.fulfilled, false);
+  assert.equal(completed.body.reason, 'awaiting_payment');
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM passes').get().c, 0, 'no pass before the money arrives');
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM payments').get().c, 0);
+
+  const cleared = await postEvent(app, {
+    type: 'checkout.session.async_payment_succeeded',
+    data: { object: { ...session, payment_status: 'paid' } },
+  });
+  assert.equal(cleared.body.fulfilled, true);
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM passes').get().c, 1);
+  assert.equal(db.prepare("SELECT COUNT(*) c FROM payments WHERE status = 'paid'").get().c, 1);
+});
+
 test('membership checkout fulfillment: activates membership with subscription id', async () => {
   const { db, app } = makeApp();
   const planId = db.prepare(
