@@ -163,6 +163,19 @@ test('returning client with signed waiver books without checkbox, uses pack cred
   assert.match(res.text, /credit deducted from your class pack/);
 });
 
+test("booking with an existing client's email does not rename them", async () => {
+  const { db, app } = makeApp();
+  const inst = makeInstance(db, makeClassType(db), { hoursFromNow: 48 });
+  const clientId = makeClient(db, { name: 'Mei Chan', email: 'mei@test.hk', waiver: true });
+
+  const agent = request.agent(app);
+  const _csrf = await csrfToken(agent, `/class/${inst}`);
+  const res = await agent.post(`/class/${inst}/book`).type('form')
+    .send({ name: 'Someone Else', email: 'mei@test.hk', _csrf });
+  assert.equal(res.status, 200);
+  assert.equal(db.prepare('SELECT name FROM clients WHERE id = ?').get(clientId).name, 'Mei Chan');
+});
+
 test('full class books to waitlist via HTTP', async () => {
   const { db, app } = makeApp();
   const type = makeClassType(db, { capacity: 1 });
