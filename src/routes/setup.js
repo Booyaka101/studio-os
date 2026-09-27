@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { setSetting, getSetting, audit } from '../db/index.js';
 import { createUser } from '../services/auth.js';
+import { isEmail } from '../lib/email.js';
 
 const TIMEZONES = [
   'Asia/Hong_Kong', 'Asia/Singapore', 'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Bangkok',
@@ -21,7 +22,7 @@ export default function setupRoutes({ db }) {
     const fail = (error) => res.status(400).render('setup', { title: 'Setup', timezones: TIMEZONES, error, form });
 
     if (!studio_name || !studio_name.trim()) return fail('Studio name is required.');
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('A valid owner email is required.');
+    if (!isEmail(email)) return fail('A valid owner email is required.');
     if (!password || password.length < 8) return fail('Password must be at least 8 characters.');
     if (password !== password2) return fail('Passwords do not match.');
     try {

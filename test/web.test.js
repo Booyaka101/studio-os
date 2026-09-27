@@ -173,6 +173,19 @@ test('a two-credit class says two credits came off the pack', async () => {
   assert.match(res.text, /2 credits deducted from your class pack/);
 });
 
+test('a 50kb junk email is turned away without stalling the server', async () => {
+  const { db, app } = makeApp();
+  const inst = makeInstance(db, makeClassType(db), { hoursFromNow: 48 });
+  const agent = request.agent(app);
+  const _csrf = await csrfToken(agent, `/class/${inst}`);
+  const started = Date.now();
+  const res = await agent.post(`/class/${inst}/book`).type('form')
+    .send({ email: `a@${'.'.repeat(50000)}@`, waiver_agree: '1', _csrf });
+  assert.equal(res.status, 400);
+  // The old regex took ~850ms on this; the event loop was blocked throughout.
+  assert.ok(Date.now() - started < 300, `took ${Date.now() - started}ms`);
+});
+
 test("booking with an existing client's email does not rename them", async () => {
   const { db, app } = makeApp();
   const inst = makeInstance(db, makeClassType(db), { hoursFromNow: 48 });
