@@ -184,6 +184,10 @@ What's protected out of the box:
 What's *not* there yet — plan accordingly:
 
 - **No 2FA** on staff logins.
+- **Without SMTP, client links are shown on screen**, so anyone who knows a
+  client's email can open their bookings page. That's fine for trying the app
+  out; configure SMTP before real clients use it. With SMTP on, links only
+  ever go to the inbox.
 - The rate limiter is **single-instance and in-memory**: counters are
   per-process and reset on restart. Fine for the one-container target; a
   multi-instance deployment needs a shared store (or limit at the proxy).

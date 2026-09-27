@@ -117,9 +117,12 @@ export default function publicRoutes(services) {
           });
       mailer.send({ to: result.client.email, ...tpl });
 
+      // Booking needs nothing but an email, so the link can't go on screen when
+      // it can go to the inbox: anyone who knows a client's address could book
+      // a class in their name and walk off with their self-service link.
       res.render('public/book_result', {
         title: result.waitlisted ? 'Waitlisted' : 'Booked',
-        inst, result, magicUrl,
+        inst, result, magicUrl: mailer.smtpConfigured ? null : magicUrl,
       });
     } catch (err) {
       if (err instanceof BookingError) {
