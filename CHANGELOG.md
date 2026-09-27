@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.4.0 — 2026-09-27
+
+**Upgrading with Stripe:** add `checkout.session.async_payment_succeeded` and
+`invoice.paid` to your webhook endpoint's events. Without them, delayed
+payments never turn into passes and renewals still go unrecorded. The database
+migrates itself on start (schema v3, one new column on `payments`).
+
+- **Security: booking in someone else's name handed over their magic link.**
+  Booking takes only a name and an email, and the confirmation page always
+  showed the booked client's `/me` link, a 7-day token to their bookings,
+  passes and cancel buttons. With SMTP configured the link now only goes out
+  by email. Without SMTP it's still shown on screen, as before, and the
+  README says what that means.
+- **Security: a 100kb POST to any public form leaked a stack trace.** The
+  body-size 413 reached the error handler before the layout locals were set,
+  `error.ejs` threw, and Express's fallback answered 500 with the
+  ReferenceError and server paths (hidden only when `NODE_ENV=production`,
+  which the Docker image sets). The error page now renders on its own and 4xx
+  statuses stay 4xx.
+- **Stripe renewals were never recorded.** Only a membership's first month
+  showed up as a payment, so the revenue report undercounted every
+  subscription after month one. `invoice.paid` now records each renewal,
+  keyed on the invoice id so webhook retries can't count a month twice.
+- **Delayed Stripe payments got a pass before the money cleared.** Bank
+  debits and other delayed methods complete Checkout with `payment_status:
+  unpaid`, and fulfilment ignored that. Unpaid sessions now wait for
+  `checkout.session.async_payment_succeeded`.
+- **Mindbody imports past a few hundred clients got a 413.** Admin → Import
+  now accepts up to 20mb.
+- **The waitlist page said "You're # in line"** with no number. It now shows
+  the actual position.
+- `GET /me` without a token answered 500 instead of the "link expired" page.
+- **Dependencies**: dotenv 17 → 18, nodemailer → 10.0.10.
+- **Tests**: 127 → 135.
+
 ## 0.3.0 — 2026-09-17
 
 - **Security: magic links were emailed as `http://` behind a reverse proxy.**
