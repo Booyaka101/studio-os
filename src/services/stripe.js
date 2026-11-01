@@ -5,6 +5,13 @@ import { audit } from '../db/index.js';
 import { addDays, localDateStr } from '../lib/time.js';
 import { getSetting } from '../db/index.js';
 
+export async function createStripeClient(secretKey) {
+  const Stripe = (await import('stripe')).default;
+  // Keep the API contract used by stripe 22.6.2; SDK upgrades must not silently
+  // change live Checkout/subscription behavior or the webhook schema we expect.
+  return new Stripe(secretKey, { apiVersion: '2026-08-26.dahlia' });
+}
+
 export function createStripeService({ env = process.env, client } = {}) {
   const secretKey = env.STRIPE_SECRET_KEY || '';
   const webhookSecret = env.STRIPE_WEBHOOK_SECRET || '';
@@ -14,8 +21,7 @@ export function createStripeService({ env = process.env, client } = {}) {
   async function getClient() {
     if (!secretKey) throw new Error('Stripe not configured');
     if (!stripe) {
-      const Stripe = (await import('stripe')).default;
-      stripe = new Stripe(secretKey);
+      stripe = await createStripeClient(secretKey);
     }
     return stripe;
   }
