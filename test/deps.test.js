@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import crypto from 'node:crypto';
-import { createStripeService } from '../src/services/stripe.js';
+import { createStripeClient, createStripeService } from '../src/services/stripe.js';
 import { createMailer } from '../src/services/mailer.js';
 
 /**
@@ -100,8 +100,8 @@ test('stripe: the real SDK still exposes the Checkout surface the mock stands in
   const svc = createStripeService({ env: { STRIPE_SECRET_KEY: 'sk_test_deps' } });
   // Reaches into the client without a network call: a rename of
   // checkout.sessions.create is a TypeError here, not a runtime 500 in prod.
-  const Stripe = (await import('stripe')).default;
-  const client = new Stripe('sk_test_deps');
+  const client = await createStripeClient('sk_test_deps');
+  assert.equal(client.getApiField('version'), '2026-08-26.dahlia');
   assert.equal(typeof client.checkout.sessions.create, 'function');
   assert.equal(typeof client.webhooks.constructEvent, 'function');
   assert.equal(svc.configured, true);

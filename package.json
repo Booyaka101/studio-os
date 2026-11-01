@@ -25,7 +25,7 @@
     "express-rate-limit": "^8.7.0",
     "marked": "^18.0.14",
     "nodemailer": "^10.0.10",
-    "stripe": "^22.6.2"
+    "stripe": "^23.0.0"
   },
   "devDependencies": {
     "supertest": "^7.3.0"
