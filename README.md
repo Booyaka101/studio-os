@@ -197,13 +197,19 @@ What's protected out of the box:
   a database reader forge signed sessions, regardless of authenticator encryption.
   Authenticator secrets use AES-256-GCM bound to the user ID; recovery codes are
   random 128-bit values stored only as hashes. No external QR service is used.
+  Unreadable pending setup can be restarted without enabling 2FA. Changing the
+  key does not repair already-enrolled authenticators: keep the original key or
+  use an unused recovery code and the current password to disable and re-enroll.
 - Enrollment requires the current password and a working authenticator code.
   Save the ten single-use recovery codes when shown: they cannot be retrieved
   later. Disabling 2FA or replacing recovery codes requires the current password
-  plus a fresh authenticator code or unused recovery code. Each change revokes
-  other sessions for that account. Existing sessions are signed out once when
+  plus a fresh authenticator code or unused recovery code. Account security warns
+  when two or fewer recovery codes remain. Each change revokes other sessions
+  for that account. Existing sessions are signed out once when
   upgrading to this session format; completed logins expire server-side after
   30 days. Client magic links are unchanged.
+  Logout clears the browser cookie, not a copied authenticated cookie: a stolen
+  signed cookie remains usable until expiry or an account security change.
 - Password-only sign-in cannot access protected routes on an enrolled account.
   Login challenges and setup expire after 10 minutes. TOTP uses six digits,
   SHA-1 and a 30-second step with one adjacent step of clock tolerance. Accepted

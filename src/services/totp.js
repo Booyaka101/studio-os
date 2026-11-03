@@ -42,7 +42,7 @@ export function totpAt(secret, now) {
 }
 
 function matchingStep(secret, code, now, last = -1) {
-  if (typeof code !== 'string' || !/^\d{6}$/.test(code)) return null;
+  if (!secret || typeof code !== 'string' || !/^\d{6}$/.test(code)) return null;
   const current = Math.floor(now / 30000);
   let match = null;
   for (const step of [current - 1, current, current + 1]) {
@@ -75,11 +75,16 @@ export function createTotpService({ db, env, now }) {
     return Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString('base64');
   };
   const decrypt = (id, encrypted) => {
-    const bytes = Buffer.from(encrypted, 'base64');
-    const decipher = crypto.createDecipheriv('aes-256-gcm', key, bytes.subarray(0, 12));
-    decipher.setAAD(Buffer.from(`studio-os:totp:${id}`));
-    decipher.setAuthTag(bytes.subarray(12, 28));
-    return Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString('utf8');
+    try {
+      const bytes = Buffer.from(encrypted, 'base64');
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, bytes.subarray(0, 12));
+      decipher.setAAD(Buffer.from(`studio-os:totp:${id}`));
+      decipher.setAuthTag(bytes.subarray(12, 28));
+      return Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString('utf8');
+    } catch {
+      // A changed key or damaged ciphertext must not block the recovery UI.
+      return null;
+    }
   };
   function allowed(account) {
     return account.totp_window_end <= now() || account.totp_failures < 5;
@@ -103,9 +108,7 @@ export function createTotpService({ db, env, now }) {
   // and its login/settings change commit together, even across app processes.
   function consumeFactor(account, code) {
     if (!account.totp_secret || !allowed(account)) return false;
-    let step = null;
-    try { step = matchingStep(decrypt(account.id, account.totp_secret), code, now(), account.totp_last_step); }
-    catch { /* Wrong key or damaged ciphertext must fail closed. */ }
+    const step = matchingStep(decrypt(account.id, account.totp_secret), code, now(), account.totp_last_step);
     if (step !== null) {
       db.prepare('UPDATE users SET totp_last_step = ? WHERE id = ?').run(step, account.id);
     } else {

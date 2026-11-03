@@ -2,11 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { Worker } from 'node:worker_threads';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { createUser } from '../src/services/auth.js';
 import { createTotpService, generateSecret, totpAt } from '../src/services/totp.js';
 import { testDb, csrfToken } from './helpers.js';
+import { openDb } from '../src/db/index.js';
 
 const env = { TOTP_ENCRYPTION_KEY: 'ab'.repeat(32) };
 const password = 'correct horse battery';
@@ -266,4 +270,102 @@ test('TOTP migration preserves existing accounts, roles and foreign keys', () =>
     assert.deepEqual(db.pragma('foreign_key_check'), []);
     assert.equal(db.prepare('SELECT count(*) n FROM users WHERE auth_version = 0 AND totp_secret IS NULL').get().n, 3);
   } finally { db.close(); }
+});
+
+test('unreadable pending enrollment fails closed and can be replaced after a key change', async () => {
+  const f = fixture();
+  const agent = request.agent(f.app);
+  await login(agent);
+  const _csrf = await csrfToken(agent, '/staff/security');
+  await post(agent, '/staff/security/setup', { _csrf, password });
+  f.db.prepare("UPDATE staff_totp_enrollments SET secret = 'damaged'").run();
+  assert.equal((await agent.get('/staff/security')).status, 200);
+  assert.equal((await post(agent, '/staff/security/enable', { _csrf, password, code: '123456' })).status, 400);
+  assert.equal(f.db.prepare('SELECT totp_secret FROM users WHERE id = ?').get(f.id).totp_secret, null);
+  const token = f.totp.startEnrollment(f.id, 0);
+  const wrong = createTotpService({ db: f.db, env: { TOTP_ENCRYPTION_KEY: 'cd'.repeat(32) }, now: f.now });
+  assert.equal(wrong.enrollmentSecret(f.id, token), null);
+  assert.equal(wrong.enable(f.id, token, '123456'), null);
+  const replacement = wrong.startEnrollment(f.id, 0);
+  const secret = wrong.enrollmentSecret(f.id, replacement);
+  assert.ok(wrong.enable(f.id, replacement, totpAt(secret, f.now())));
+});
+
+test('new sign-in challenges replace older ones without consuming recovery codes', () => {
+  const f = fixture();
+  const { codes } = enroll(f);
+  const old = f.totp.createChallenge(f.id);
+  const latest = f.totp.createChallenge(f.id);
+  assert.equal(f.totp.completeChallenge(old, codes[0]), null);
+  assert.ok(f.totp.completeChallenge(latest, codes[0]));
+});
+
+test('account security warns when recovery codes run low and clears the warning after replacement', async () => {
+  const f = fixture();
+  const { codes } = enroll(f);
+  const agent = request.agent(f.app);
+  await login(agent);
+  const _csrf = await csrfToken(agent, '/admin/login/verify');
+  await post(agent, '/admin/login/verify', { _csrf, code: codes[0] });
+  assert.ok(!(await agent.get('/staff/security')).text.includes('running low'));
+  for (const code of codes.slice(1, 8)) {
+    assert.ok(f.totp.completeChallenge(f.totp.createChallenge(f.id), code));
+  }
+  assert.match((await agent.get('/staff/security')).text, /recovery codes are running low/);
+  const replaced = await post(agent, '/staff/security/regenerate', { _csrf, password, code: codes[8] });
+  assert.equal(replaced.status, 200);
+  assert.ok(!replaced.text.includes('running low'));
+  assert.equal(f.db.prepare('SELECT count(*) n FROM staff_recovery_codes').get().n, 10);
+});
+
+test('independent SQLite connections cannot consume a challenge or factor twice', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-totp-race-'));
+  const file = path.join(dir, 'studio.db');
+  const db = openDb(file);
+  const workers = [];
+  try {
+    const now = () => 1800000000000;
+    const id = createUser(db, { email: 'race@test.test', password });
+    const totp = createTotpService({ db, env, now });
+    const token = totp.startEnrollment(id, 0);
+    const secret = totp.enrollmentSecret(id, token);
+    const { codes } = totp.enable(id, token, totpAt(secret, now()));
+    for (const code of [codes[0], totpAt(secret, now() + 30000)]) {
+      const challenge = totp.createChallenge(id);
+      const pair = Array.from({ length: 2 }, () => new Worker(`
+        const { parentPort, workerData } = require('node:worker_threads');
+        (async () => {
+          const { openDb } = await import(workerData.dbModule);
+          const { createTotpService } = await import(workerData.totpModule);
+          const db = openDb(workerData.file);
+          const service = createTotpService({ db, env: workerData.env, now: () => workerData.now });
+          parentPort.once('message', () => {
+            try { parentPort.postMessage(Boolean(service.completeChallenge(workerData.challenge, workerData.code))); }
+            finally { db.close(); }
+          });
+          parentPort.postMessage('ready');
+        })().catch((err) => { throw err; });
+      `, { eval: true, workerData: {
+        file, env, now: now(), challenge, code,
+        dbModule: new URL('../src/db/index.js', import.meta.url).href,
+        totpModule: new URL('../src/services/totp.js', import.meta.url).href,
+      } }));
+      workers.push(...pair);
+      await Promise.all(pair.map((worker) => new Promise((resolve, reject) => {
+        worker.once('message', resolve);
+        worker.once('error', reject);
+      })));
+      const results = pair.map((worker) => new Promise((resolve, reject) => {
+        worker.once('message', resolve);
+        worker.once('error', reject);
+      }));
+      for (const worker of pair) worker.postMessage('go');
+      assert.deepEqual((await Promise.all(results)).sort(), [false, true]);
+      assert.equal(totp.completeChallenge(totp.createChallenge(id), code), null);
+    }
+  } finally {
+    await Promise.all(workers.map((worker) => worker.terminate()));
+    db.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

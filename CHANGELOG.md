@@ -11,6 +11,8 @@
 - Version staff sessions and revoke other sessions after security changes;
   validate session expiry server-side. Existing staff sessions must sign in again
   after upgrading. Document key backup requirements and recovery limitations.
+- Recover gracefully from unreadable pending authenticator setup after key
+  changes or ciphertext damage, and warn when two or fewer recovery codes remain.
 - Make the rule-capacity web test select a future class rather than depending on
   the current weekday and time.
 

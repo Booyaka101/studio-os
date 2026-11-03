@@ -32,6 +32,9 @@
     <% } %>
   <% } else { %>
     <p><%= remaining %> unused recovery code(s) remain. A code already used in this 30-second window cannot be reused.</p>
+    <% if (remaining <= 2) { %>
+      <p role="alert">Your recovery codes are running low. Replace them now and save the new set somewhere safe.</p>
+    <% } %>
     <% for (const action of ['regenerate', 'disable']) { %>
       <h3><%= action === 'regenerate' ? 'Replace recovery codes' : 'Disable two-factor authentication' %></h3>
       <form method="post" action="/staff/security/<%= action %>"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
