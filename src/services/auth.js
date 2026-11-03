@@ -31,6 +31,14 @@ export function authenticate(db, email, password) {
   return user && ok ? user : null;
 }
 
+export function establishStaffSession(req, user, now = Date.now()) {
+  req.session = {
+    userId: user.id, authVersion: user.auth_version,
+    authExpires: now + 30 * 24 * 3600000,
+    csrf: req.session.csrf || crypto.randomBytes(24).toString('hex'),
+  };
+}
+
 // --- magic links -----------------------------------------------------------
 
 function hmac(secret, payload) {
@@ -64,7 +72,7 @@ export function verifyMagicToken(db, token, { now = Date.now() } = {}) {
 // --- express middleware ----------------------------------------------------
 
 export function requireStaff(req, res, next) {
-  if (req.session && req.session.userId) return next();
+  if (req.session && req.session.userId && res.locals.user) return next();
   return res.redirect('/admin/login');
 }
 

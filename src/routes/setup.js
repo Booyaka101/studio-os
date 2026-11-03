@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { setSetting, getSetting, audit } from '../db/index.js';
-import { createUser } from '../services/auth.js';
+import { createUser, establishStaffSession } from '../services/auth.js';
 import { isEmail } from '../lib/email.js';
 
 const TIMEZONES = [
@@ -9,7 +9,7 @@ const TIMEZONES = [
   'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'UTC',
 ];
 
-export default function setupRoutes({ db }) {
+export default function setupRoutes({ db, now }) {
   const r = Router();
 
   r.get('/', (req, res) => {
@@ -48,7 +48,7 @@ export default function setupRoutes({ db }) {
       return id;
     })();
 
-    req.session.userId = userId;
+    establishStaffSession(req, db.prepare('SELECT * FROM users WHERE id = ?').get(userId), now());
     res.redirect('/admin');
   });
 

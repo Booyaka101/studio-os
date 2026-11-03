@@ -1,0 +1,12 @@
+<%- include('partials/head', { adminNav: false }) %>
+<article class="narrow">
+  <h2>Verify sign-in</h2>
+  <p>Enter a fresh six-digit code from your authenticator, or one unused recovery code.</p>
+  <% if (error) { %><p class="flash error" role="alert"><%= error %></p><% } %>
+  <form method="post" action="/admin/login/verify"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Authenticator or recovery code <input name="code" autocomplete="one-time-code" maxlength="40" required autofocus></label>
+    <button type="submit">Verify</button>
+  </form>
+  <a href="/admin/login">Start sign-in again</a>
+</article>
+<%- include('partials/foot') %>

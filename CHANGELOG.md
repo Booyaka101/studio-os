@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Add opt-in TOTP two-factor authentication for owners, staff and instructors,
+  with password-confirmed setup, ten single-use recovery codes, regeneration
+  and disable controls under Account security. Client magic links are unchanged.
+- Encrypt authenticator secrets with a separately configured TOTP_ENCRYPTION_KEY.
+  Keep pending challenges in SQLite, hash recovery codes, reject accepted TOTP
+  steps, and persist per-account failed-code limits across sessions and restarts.
+- Version staff sessions and revoke other sessions after security changes;
+  validate session expiry server-side. Existing staff sessions must sign in again
+  after upgrading. Document key backup requirements and recovery limitations.
+- Make the rule-capacity web test select a future class rather than depending on
+  the current weekday and time.
+
 ## 0.6.0 — 2026-09-27
 
 **Upgrading:** in the Stripe dashboard, add `customer.subscription.updated`
@@ -220,4 +234,3 @@ First release. Single-studio, self-hosted, bring-your-own Stripe.
   JSON column mapping with defaults, dry-run, idempotent by email
 - Seed script (`npm run seed`), Dockerfile + docker-compose, PWA manifest +
   service worker, vendored htmx/Pico.css (no CDN), 67 tests (no network)
-

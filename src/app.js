@@ -8,6 +8,7 @@ import { formatInTz } from './lib/time.js';
 import { createRateLimiter } from './lib/ratelimit.js';
 import { createMailer } from './services/mailer.js';
 import { createStripeService } from './services/stripe.js';
+import { createTotpService } from './services/totp.js';
 import setupRoutes from './routes/setup.js';
 import authRoutes from './routes/auth.js';
 import publicRoutes from './routes/public.js';
@@ -42,7 +43,8 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
     db,
     mailer: mailer || createMailer({ env }),
     stripe: stripeService || createStripeService({ env }),
-    env,
+    now,
+    totp: createTotpService({ db, env, now }),
     baseUrl(req) {
       return env.BASE_URL || `${req.protocol}://${req.get('host')}`;
     },
@@ -85,9 +87,12 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
     res.locals.fmtMoney = (cents) => new Intl.NumberFormat('en', {
       style: 'currency', currency: res.locals.currency, minimumFractionDigits: 0,
     }).format((cents || 0) / 100);
-    res.locals.user = req.session && req.session.userId
-      ? db.prepare('SELECT id, email, name, role FROM users WHERE id = ?').get(req.session.userId)
+    const account = req.session && req.session.userId
+      ? db.prepare('SELECT id, email, name, role, auth_version FROM users WHERE id = ?').get(req.session.userId)
       : null;
+    const valid = account && req.session.authVersion === account.auth_version && req.session.authExpires > now();
+    res.locals.user = valid ? { id: account.id, email: account.email, name: account.name, role: account.role } : null;
+    if (req.session.userId && !valid) req.session = {};
     // Public views ask "can we take money online?", which needs both keys.
     res.locals.stripeConfigured = services.stripe.checkoutReady;
     res.locals.stripeKeySet = services.stripe.configured;
@@ -108,6 +113,11 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
   app.post('/admin/login', createRateLimiter({
     windowMs: RL_WINDOW, max: 10, env, now,
     message: 'Too many login attempts — please wait 15 minutes and try again.',
+  }));
+  app.post(['/admin/login/verify', '/staff/security/setup', '/staff/security/enable',
+    '/staff/security/disable', '/staff/security/regenerate'], createRateLimiter({
+    windowMs: RL_WINDOW, max: 10, env, now, perRoute: false,
+    message: 'Too many security attempts. Please wait 15 minutes and try again.',
   }));
   app.post(['/class/:id/book', '/buy/pack/:id', '/buy/membership/:id'], createRateLimiter({
     windowMs: RL_WINDOW, max: 30, env, now,
