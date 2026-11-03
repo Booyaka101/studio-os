@@ -67,10 +67,16 @@ export default function authRoutes({ db, totp, now }) {
       remaining: db.prepare('SELECT count(*) AS n FROM staff_recovery_codes WHERE user_id = ?').get(account.id).n,
     });
   }
-  const passwordOk = (req) => verifyPassword(String(req.body?.password || ''), accountFor(req).password_hash);
+  const passwordOk = (req) => typeof req.body?.password === 'string'
+    && verifyPassword(req.body.password, accountFor(req).password_hash);
   const fail = (req, res) => securityPage(req, res, { status: 400, error: 'Verification failed. Check your password and use a fresh code. After five failed codes, wait 15 minutes.' });
 
   r.get('/staff/security', (req, res) => securityPage(req, res));
+  r.post('/staff/security/cancel', (req, res) => {
+    totp.cancelEnrollment(req.session.userId, req.session.enrollment);
+    delete req.session.enrollment;
+    res.redirect('/staff/security');
+  });
   r.post('/staff/security/setup', (req, res) => {
     if (!totp.configured || !passwordOk(req)) return fail(req, res);
     const token = totp.startEnrollment(req.session.userId, req.session.authVersion);

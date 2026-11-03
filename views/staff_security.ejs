@@ -23,6 +23,9 @@
         <label>Authenticator code <input name="code" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" required></label>
         <button>Enable two-factor authentication</button>
       </form>
+      <form method="post" action="/staff/security/cancel"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="secondary">Cancel authenticator setup</button>
+      </form>
     <% } else { %>
       <p>Protect your staff login with a time-based authenticator. Client magic links are unchanged.</p>
       <form method="post" action="/staff/security/setup"><input type="hidden" name="_csrf" value="<%= csrfToken %>">

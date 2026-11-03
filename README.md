@@ -201,6 +201,8 @@ What's protected out of the box:
   key does not repair already-enrolled authenticators: keep the original key or
   use an unused recovery code and the current password to disable and re-enroll.
 - Enrollment requires the current password and a working authenticator code.
+  Before enabling, **Cancel authenticator setup** invalidates that setup key's
+  enrollment nonce. A stale setup tab cannot cancel a replacement enrollment.
   Save the ten single-use recovery codes when shown: they cannot be retrieved
   later. Disabling 2FA or replacing recovery codes requires the current password
   plus a fresh authenticator code or unused recovery code. Account security warns

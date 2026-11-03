@@ -161,6 +161,11 @@ export function createTotpService({ db, env, now }) {
       const pending = enrollment(id, token);
       return pending ? decrypt(id, pending.secret) : null;
     },
+    cancelEnrollment(id, token) {
+      if (typeof token !== 'string') return false;
+      return Boolean(db.prepare('DELETE FROM staff_totp_enrollments WHERE user_id = ? AND token_hash = ?')
+        .run(id, digest(token)).changes);
+    },
     enable(id, token, code) {
       return db.transaction(() => {
         const account = user(id);

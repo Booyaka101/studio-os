@@ -38,6 +38,48 @@ async function login(agent) {
   return post(agent, '/admin/login', { _csrf, email: 'staff@test.test', password });
 }
 
+test('structured credential fields are rejected without coercion or HTTP 500', async () => {
+  const f = fixture();
+  const agent = request.agent(f.app);
+  const _csrf = await csrfToken(agent, '/admin/login');
+  for (const fields of [
+    { 'email[toString]': 'broken', password },
+    { email: 'staff@test.test', 'password[toString]': 'broken' },
+    { 'email[]': 'staff@test.test', password },
+    { email: 'staff@test.test', 'password[]': password },
+  ]) {
+    const body = new URLSearchParams({ _csrf, ...fields }).toString();
+    assert.equal((await agent.post('/admin/login').type('form').send(body)).status, 401);
+  }
+  await login(agent);
+  for (const fields of [{ 'password[toString]': 'broken' }, { 'password[]': password }]) {
+    const body = new URLSearchParams({ _csrf, ...fields }).toString();
+    assert.equal((await agent.post('/staff/security/setup').type('form').send(body)).status, 400);
+  }
+  assert.equal(f.db.prepare('SELECT count(*) n FROM staff_totp_enrollments').get().n, 0);
+});
+
+test('canceling setup invalidates its nonce but cannot cancel another browser replacement', async () => {
+  const f = fixture();
+  const agent = request.agent(f.app);
+  await login(agent);
+  const _csrf = await csrfToken(agent, '/staff/security');
+  await post(agent, '/staff/security/setup', { _csrf, password });
+  const setup = await agent.get('/staff/security');
+  assert.match(setup.text, /Cancel authenticator setup/);
+  const secret = setup.text.match(/Setup key: <code>([A-Z2-7]+)<\/code>/)[1];
+  assert.equal((await agent.post('/staff/security/cancel')).status, 403);
+  assert.equal((await post(agent, '/staff/security/cancel', { _csrf })).status, 302);
+  assert.equal(f.db.prepare('SELECT count(*) n FROM staff_totp_enrollments').get().n, 0);
+  assert.equal((await post(agent, '/staff/security/enable', { _csrf, password, code: totpAt(secret, f.now()) })).status, 400);
+  const old = f.totp.startEnrollment(f.id, 0);
+  const latest = f.totp.startEnrollment(f.id, 0);
+  assert.equal(f.totp.cancelEnrollment(f.id, old), false);
+  assert.ok(f.totp.enrollmentSecret(f.id, latest));
+  assert.equal(f.totp.cancelEnrollment(f.id, latest), true);
+  assert.equal(f.totp.enrollmentSecret(f.id, latest), null);
+});
+
 for (const [seconds, expected] of [[59, '287082'], [1111111109, '081804'], [1111111111, '050471'],
   [1234567890, '005924'], [2000000000, '279037'], [20000000000, '353130']]) {
   test(`TOTP matches RFC 6238 SHA-1 vector at ${seconds}`, () => {

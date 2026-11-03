@@ -114,7 +114,7 @@ export function createApp({ db, mailer, stripeService, env = process.env, now = 
     windowMs: RL_WINDOW, max: 10, env, now,
     message: 'Too many login attempts — please wait 15 minutes and try again.',
   }));
-  app.post(['/admin/login/verify', '/staff/security/setup', '/staff/security/enable',
+  app.post(['/admin/login/verify', '/staff/security/setup', '/staff/security/cancel', '/staff/security/enable',
     '/staff/security/disable', '/staff/security/regenerate'], createRateLimiter({
     windowMs: RL_WINDOW, max: 10, env, now, perRoute: false,
     message: 'Too many security attempts. Please wait 15 minutes and try again.',

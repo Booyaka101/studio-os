@@ -16,6 +16,9 @@
 - Make authenticated logout revoke all account sessions, copied cookies and
   pending security state; label the action "Log out all devices". Reject bodyless
   authentication requests normally instead of returning HTTP 500.
+- Reject structured credential fields without string coercion or HTTP 500.
+  Add CSRF-protected cancellation of pending authenticator setup, scoped to
+  its enrollment nonce so stale tabs cannot cancel replacement setup.
 - Make the rule-capacity web test select a future class rather than depending on
   the current weekday and time.
 
