@@ -318,6 +318,78 @@ test('account security warns when recovery codes run low and clears the warning 
   assert.equal(f.db.prepare('SELECT count(*) n FROM staff_recovery_codes').get().n, 10);
 });
 
+test('authenticated logout revokes copied cookies, other sessions and pending security state', async () => {
+  const f = fixture();
+  const { codes } = enroll(f);
+  const agent = request.agent(f.app);
+  await login(agent);
+  const _csrf = await csrfToken(agent, '/admin/login/verify');
+  const signedIn = await post(agent, '/admin/login/verify', { _csrf, code: codes[0] });
+  const cookie = signedIn.headers['set-cookie'].map((value) => value.split(';')[0]).join('; ');
+  const challenge = f.totp.createChallenge(f.id);
+  assert.equal((await post(agent, '/admin/logout', { _csrf })).status, 302);
+  const replay = request(f.app);
+  assert.equal((await replay.get('/staff/security').set('Cookie', cookie)).headers.location, '/admin/login');
+  assert.equal(f.totp.completeChallenge(challenge, codes[1]), null);
+  assert.equal(f.db.prepare('SELECT auth_version FROM users WHERE id = ?').get(f.id).auth_version, 2);
+  assert.equal(f.db.prepare("SELECT count(*) n FROM audit_log WHERE action = 'logout_all'").get().n, 1);
+  // Replaying a stale logout cannot increment the account version again.
+  await replay.post('/admin/logout').set('Cookie', cookie).type('form').send({ _csrf });
+  assert.equal(f.db.prepare('SELECT auth_version FROM users WHERE id = ?').get(f.id).auth_version, 2);
+});
+
+test('bodyless auth requests with header CSRF fail normally instead of returning 500', async () => {
+  const f = fixture();
+  const agent = request.agent(f.app);
+  const token = await csrfToken(agent, '/admin/login');
+  assert.equal((await agent.post('/admin/login').set('x-csrf-token', token)).status, 401);
+  await login(agent);
+  const _csrf = await csrfToken(agent, '/staff/security');
+  for (const action of ['setup', 'enable', 'regenerate', 'disable']) {
+    assert.equal((await agent.post(`/staff/security/${action}`).set('x-csrf-token', _csrf)).status, 400);
+  }
+  await post(agent, '/admin/logout', { _csrf });
+  const anonymousToken = await csrfToken(agent, '/admin/login');
+  assert.equal((await agent.post('/admin/login/verify').set('x-csrf-token', anonymousToken)).status, 401);
+});
+
+for (const role of ['owner', 'staff', 'instructor']) {
+  test(`${role}: logout requires CSRF and revokes password-only sessions and enrollment`, async () => {
+    const f = fixture(role);
+    const agent = request.agent(f.app);
+    const other = request.agent(f.app);
+    await login(agent);
+    await login(other);
+    const _csrf = await csrfToken(agent, '/staff/security');
+    await post(agent, '/staff/security/setup', { _csrf, password });
+    assert.equal((await agent.post('/admin/logout')).status, 403);
+    assert.equal(f.db.prepare('SELECT auth_version FROM users WHERE id = ?').get(f.id).auth_version, 0);
+    assert.equal((await other.get('/staff/security')).status, 200);
+    await post(agent, '/admin/logout', { _csrf });
+    assert.equal((await other.get('/staff/security')).headers.location, '/admin/login');
+    assert.equal(f.db.prepare('SELECT count(*) n FROM staff_totp_enrollments').get().n, 0);
+    assert.equal((await login(agent)).headers.location, role === 'instructor' ? '/instructor/schedule' : '/admin');
+  });
+}
+
+test('canceling a partial sign-in does not revoke authenticated sessions or another account', async () => {
+  const f = fixture();
+  const { codes } = enroll(f);
+  const authenticated = request.agent(f.app);
+  await login(authenticated);
+  const token = await csrfToken(authenticated, '/admin/login/verify');
+  await post(authenticated, '/admin/login/verify', { _csrf: token, code: codes[0] });
+  const partial = request.agent(f.app);
+  await login(partial);
+  const _csrf = await csrfToken(partial, '/admin/login/verify');
+  await post(partial, '/admin/logout', { _csrf });
+  assert.equal((await authenticated.get('/staff/security')).status, 200);
+  const otherId = createUser(f.db, { email: 'unrelated@test.test', password });
+  assert.equal(f.totp.signOutAll(f.id, 0), false, 'stale version cannot revoke newer sessions');
+  assert.equal(f.totp.signOutAll(f.id, 1), true);
+  assert.equal(f.db.prepare('SELECT auth_version FROM users WHERE id = ?').get(otherId).auth_version, 0);
+});
+
 test('independent SQLite connections cannot consume a challenge or factor twice', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-totp-race-'));
   const file = path.join(dir, 'studio.db');

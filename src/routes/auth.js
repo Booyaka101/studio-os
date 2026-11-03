@@ -25,7 +25,7 @@ export default function authRoutes({ db, totp, now }) {
     totp.cancelChallenge(req.session.pendingLogin);
     const csrf = req.session.csrf;
     req.session = { csrf };
-    const user = authenticate(db, req.body.email, req.body.password);
+    const user = authenticate(db, req.body?.email, req.body?.password);
     if (!user) {
       return res.status(401).render('login', { title: 'Staff login', error: 'Invalid email or password.' });
     }
@@ -46,7 +46,7 @@ export default function authRoutes({ db, totp, now }) {
   });
 
   r.post('/admin/login/verify', (req, res) => {
-    const user = totp.completeChallenge(req.session.pendingLogin, req.body.code);
+    const user = totp.completeChallenge(req.session.pendingLogin, req.body?.code);
     if (!user) return res.status(401).render('login_verify', {
       title: 'Verify sign-in', error: 'Invalid or expired verification. Use a fresh code or start sign-in again. After five failed attempts, wait 15 minutes.',
     });
@@ -67,7 +67,7 @@ export default function authRoutes({ db, totp, now }) {
       remaining: db.prepare('SELECT count(*) AS n FROM staff_recovery_codes WHERE user_id = ?').get(account.id).n,
     });
   }
-  const passwordOk = (req) => verifyPassword(String(req.body.password || ''), accountFor(req).password_hash);
+  const passwordOk = (req) => verifyPassword(String(req.body?.password || ''), accountFor(req).password_hash);
   const fail = (req, res) => securityPage(req, res, { status: 400, error: 'Verification failed. Check your password and use a fresh code. After five failed codes, wait 15 minutes.' });
 
   r.get('/staff/security', (req, res) => securityPage(req, res));
@@ -80,7 +80,7 @@ export default function authRoutes({ db, totp, now }) {
   });
   r.post('/staff/security/enable', (req, res) => {
     if (!totp.configured || !passwordOk(req)) return fail(req, res);
-    const result = totp.enable(req.session.userId, req.session.enrollment, req.body.code);
+    const result = totp.enable(req.session.userId, req.session.enrollment, req.body?.code);
     if (!result) return fail(req, res);
     establishStaffSession(req, result.user, now());
     securityPage(req, res, { codes: result.codes });
@@ -88,7 +88,7 @@ export default function authRoutes({ db, totp, now }) {
   for (const action of ['disable', 'regenerate']) {
     r.post(`/staff/security/${action}`, (req, res) => {
       if (!passwordOk(req)) return fail(req, res);
-      const result = totp.change(req.session.userId, req.body.code, action, req.session.authVersion);
+      const result = totp.change(req.session.userId, req.body?.code, action, req.session.authVersion);
       if (!result) return fail(req, res);
       establishStaffSession(req, result.user, now());
       if (result.codes) return securityPage(req, res, { codes: result.codes });
@@ -98,6 +98,7 @@ export default function authRoutes({ db, totp, now }) {
   }
 
   r.post('/admin/logout', (req, res) => {
+    if (res.locals.user) totp.signOutAll(req.session.userId, req.session.authVersion);
     totp.cancelChallenge(req.session.pendingLogin);
     req.session = null;
     res.redirect('/');

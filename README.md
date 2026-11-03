@@ -208,8 +208,9 @@ What's protected out of the box:
   for that account. Existing sessions are signed out once when
   upgrading to this session format; completed logins expire server-side after
   30 days. Client magic links are unchanged.
-  Logout clears the browser cookie, not a copied authenticated cookie: a stolen
-  signed cookie remains usable until expiry or an account security change.
+  **Log out all devices** increments the account's session version and cancels
+  pending sign-ins and enrollment, invalidating copied cookies as well as other
+  devices. Logging out during an uncompleted sign-in only cancels that challenge.
 - Password-only sign-in cannot access protected routes on an enrolled account.
   Login challenges and setup expire after 10 minutes. TOTP uses six digits,
   SHA-1 and a 30-second step with one adjacent step of clock tolerance. Accepted

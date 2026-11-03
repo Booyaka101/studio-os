@@ -13,6 +13,9 @@
   after upgrading. Document key backup requirements and recovery limitations.
 - Recover gracefully from unreadable pending authenticator setup after key
   changes or ciphertext damage, and warn when two or fewer recovery codes remain.
+- Make authenticated logout revoke all account sessions, copied cookies and
+  pending security state; label the action "Log out all devices". Reject bodyless
+  authentication requests normally instead of returning HTTP 500.
 - Make the rule-capacity web test select a future class rather than depending on
   the current weekday and time.
 

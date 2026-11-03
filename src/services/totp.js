@@ -135,6 +135,15 @@ export function createTotpService({ db, env, now }) {
   }
   return {
     configured,
+    signOutAll(id, version) {
+      return db.transaction(() => {
+        const account = user(id);
+        if (!account || account.auth_version !== version) return false;
+        revoke(id);
+        audit(db, account.email, 'logout_all', `user:${id}`);
+        return true;
+      }).immediate();
+    },
     startEnrollment(id, version) {
       if (!configured) throw new Error('Authenticator enrollment is not configured');
       return db.transaction(() => {
