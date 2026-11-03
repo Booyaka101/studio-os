@@ -26,9 +26,18 @@ export function createUser(db, { email, password, name = '', role = 'staff' }) {
 const DUMMY_HASH = bcrypt.hashSync('password-that-is-never-valid', 10);
 
 export function authenticate(db, email, password) {
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(String(email || '').trim().toLowerCase());
-  const ok = verifyPassword(String(password || ''), user ? user.password_hash : DUMMY_HASH);
+  const valid = typeof email === 'string' && typeof password === 'string';
+  const user = valid ? db.prepare('SELECT * FROM users WHERE email = ?').get(email.trim().toLowerCase()) : null;
+  const ok = verifyPassword(valid ? password : '', user ? user.password_hash : DUMMY_HASH);
   return user && ok ? user : null;
+}
+
+export function establishStaffSession(req, user, now = Date.now()) {
+  req.session = {
+    userId: user.id, authVersion: user.auth_version,
+    authExpires: now + 30 * 24 * 3600000,
+    csrf: req.session.csrf || crypto.randomBytes(24).toString('hex'),
+  };
 }
 
 // --- magic links -----------------------------------------------------------
@@ -64,7 +73,7 @@ export function verifyMagicToken(db, token, { now = Date.now() } = {}) {
 // --- express middleware ----------------------------------------------------
 
 export function requireStaff(req, res, next) {
-  if (req.session && req.session.userId) return next();
+  if (req.session && req.session.userId && res.locals.user) return next();
   return res.redirect('/admin/login');
 }
 

@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.7.0 - 2026-11-03
+
+**Upgrading:** back up the database before starting this version. Schema v5
+migrates automatically and preserves existing accounts. Existing staff sessions
+must sign in again. To offer optional staff 2FA, configure a persistent, random
+64-hex-character `TOTP_ENCRYPTION_KEY` and back it up separately from the database.
+Also use a separate external random `APP_SECRET`. Keep the original encryption
+key after enrollment; enrolled accounts require it at startup. Save recovery codes
+when shown. Authenticated logout now signs out all devices for that account.
+Client magic links are unchanged.
+
+- Add opt-in TOTP two-factor authentication for owners, staff and instructors,
+  with password-confirmed setup, ten single-use recovery codes, regeneration
+  and disable controls under Account security. Client magic links are unchanged.
+- Encrypt authenticator secrets with a separately configured TOTP_ENCRYPTION_KEY.
+  Keep pending challenges in SQLite, hash recovery codes, reject accepted TOTP
+  steps, and persist per-account failed-code limits across sessions and restarts.
+- Version staff sessions and revoke other sessions after security changes;
+  validate session expiry server-side. Existing staff sessions must sign in again
+  after upgrading. Document key backup requirements and recovery limitations.
+- Recover gracefully from unreadable pending authenticator setup after key
+  changes or ciphertext damage, and warn when two or fewer recovery codes remain.
+- Make authenticated logout revoke all account sessions, copied cookies and
+  pending security state; label the action "Log out all devices". Reject bodyless
+  authentication requests normally instead of returning HTTP 500.
+- Reject structured credential fields without string coercion or HTTP 500.
+  Add CSRF-protected cancellation of pending authenticator setup, scoped to
+  its enrollment nonce so stale tabs cannot cancel replacement setup.
+- Make the rule-capacity web test select a future class rather than depending on
+  the current weekday and time.
+
 ## 0.6.0 — 2026-09-27
 
 **Upgrading:** in the Stripe dashboard, add `customer.subscription.updated`
@@ -220,4 +251,3 @@ First release. Single-studio, self-hosted, bring-your-own Stripe.
   JSON column mapping with defaults, dry-run, idempotent by email
 - Seed script (`npm run seed`), Dockerfile + docker-compose, PWA manifest +
   service worker, vendored htmx/Pico.css (no CDN), 67 tests (no network)
-

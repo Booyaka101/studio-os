@@ -19,6 +19,11 @@ Self-hosted. It holds your customers' booking data and talks to your own payment
 - **It holds your customers' data**: names, contact details, bookings and pack balances, in your own database. Nothing is sent to us, ever.
 - **Payments run through Stripe Checkout on your own account.** Card details are entered on Stripe's hosted page and never reach this application. Keep your webhook signing secret secret; an attacker holding it can forge payment events.
 - **Sessions, CSRF and rate limiting** are in scope, and so is anything that lets one studio read another's data.
+- **Staff TOTP and recovery codes** are in scope, including partial-login bypass,
+  accepted-code replay, account lockout bypass and secret disclosure. Enrollment
+  is optional. Keep TOTP_ENCRYPTION_KEY and APP_SECRET outside database backups;
+  the default database-stored APP_SECRET does not protect sessions from database
+  readers. Never include live authenticator keys or recovery codes in a report.
 
 ## Scope
 

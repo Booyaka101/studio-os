@@ -188,10 +188,47 @@ What's protected out of the box:
   `HttpOnly` cookies (`Secure` too, over https); webhook fulfillment is
   idempotent. The staff login does the same bcrypt work whether or not the
   email exists, so it can't be used to enumerate accounts.
+- **Optional staff 2FA**: owners, staff and instructors can enroll a TOTP
+  authenticator under **Account security**. The operator first sets
+  `TOTP_ENCRYPTION_KEY` to 64 random hexadecimal characters (32 bytes). Generate
+  it with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
+  Keep it separate from the database and back it up securely. Set a separate
+  random `APP_SECRET` outside the database too: its default stored value lets
+  a database reader forge signed sessions, regardless of authenticator encryption.
+  Authenticator secrets use AES-256-GCM bound to the user ID; recovery codes are
+  random 128-bit values stored only as hashes. No external QR service is used.
+  Unreadable pending setup can be restarted without enabling 2FA. Changing the
+  key does not repair already-enrolled authenticators: keep the original key or
+  use an unused recovery code and the current password to disable and re-enroll.
+- Enrollment requires the current password and a working authenticator code.
+  Before enabling, **Cancel authenticator setup** invalidates that setup key's
+  enrollment nonce. A stale setup tab cannot cancel a replacement enrollment.
+  Save the ten single-use recovery codes when shown: they cannot be retrieved
+  later. Disabling 2FA or replacing recovery codes requires the current password
+  plus a fresh authenticator code or unused recovery code. Account security warns
+  when two or fewer recovery codes remain. Each change revokes other sessions
+  for that account. Existing sessions are signed out once when
+  upgrading to this session format; completed logins expire server-side after
+  30 days. Client magic links are unchanged.
+  **Log out all devices** increments the account's session version and cancels
+  pending sign-ins and enrollment, invalidating copied cookies as well as other
+  devices. Logging out during an uncompleted sign-in only cancels that challenge.
+- Password-only sign-in cannot access protected routes on an enrolled account.
+  Login challenges and setup expire after 10 minutes. TOTP uses six digits,
+  SHA-1 and a 30-second step with one adjacent step of clock tolerance. Accepted
+  steps cannot be reused, including the enrollment code. Five failed codes lock
+  that account's factor verification for the remainder of a 15-minute window,
+  persisted in SQLite across login attempts and restarts. Verification and
+  security changes also share an IP limit of 10 requests per 15 minutes.
 
 What's *not* there yet — plan accordingly:
 
-- **No 2FA** on staff logins.
+- Staff 2FA is **opt-in**, not an organization-wide enforcement policy. Losing
+  both the authenticator and recovery codes has no web-admin bypass. Restore a
+  known-good backup or perform a deliberate operator-controlled database repair
+  after verifying the account holder. Do not send authenticator keys or recovery
+  codes in support requests. If an enrolled account exists, startup requires
+  `TOTP_ENCRYPTION_KEY`; a wrong key rejects TOTP codes rather than bypassing 2FA.
 - **Without SMTP, client links are shown on screen**, so anyone who knows a
   client's email can open their bookings page. That's fine for trying the app
   out; configure SMTP before real clients use it. With SMTP on, links only
@@ -206,6 +243,12 @@ What's *not* there yet — plan accordingly:
 Admin → Settings → **Download backup** produces a consistent snapshot via
 SQLite `VACUUM INTO`. Or just copy `data/studio.db` while the app is stopped.
 It's one file — cron it anywhere.
+
+Back up `TOTP_ENCRYPTION_KEY` and any externally configured `APP_SECRET` separately
+and securely. A database backup alone cannot decrypt enrolled authenticator
+secrets without the original encryption key. Restoring an old database can
+restore previously consumed codes and sessions, so treat restores as a security
+event and replace recovery codes afterwards.
 
 ## Screenshots
 
@@ -250,7 +293,7 @@ Stripe webhook fulfillment against a mock client.
 ## Honest v0.1 limitations
 
 - **Single studio, single location, one timezone.**
-- See [Security](#security) for what is and isn't covered (no 2FA;
+- See [Security](#security) for what is and isn't covered (opt-in staff 2FA;
   single-instance in-memory rate limiter; HTTPS via your reverse proxy).
 - Membership renewal bookkeeping is driven by Stripe webhooks; cash memberships
   need manual renewal (mark paid each cycle).

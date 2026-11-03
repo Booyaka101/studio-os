@@ -443,7 +443,8 @@ test('admin: a rule capacity change reaches its booked classes too', async () =>
     class_type_id: String(type), weekday: '2', start_time: '07:00', _csrf,
   });
   const ruleId = db.prepare('SELECT id FROM schedule_rules').get().id;
-  const next = db.prepare('SELECT id FROM class_instances WHERE rule_id = ? ORDER BY starts_at').get(ruleId).id;
+  const next = db.prepare('SELECT id FROM class_instances WHERE rule_id = ? AND starts_at > ? ORDER BY starts_at')
+    .get(ruleId, new Date().toISOString()).id;
   book(db, makeClient(db, { email: 'first@rule.hk' }), next);
   const { booking: wl } = book(db, makeClient(db, { email: 'waiting@rule.hk' }), next);
 
@@ -451,7 +452,8 @@ test('admin: a rule capacity change reaches its booked classes too', async () =>
     class_type_id: String(type), weekday: '2', start_time: '07:00', capacity_override: '3', _csrf,
   });
   assert.equal(res.status, 302);
-  const caps = db.prepare('SELECT DISTINCT capacity FROM class_instances WHERE rule_id = ?').pluck().all(ruleId);
+  const caps = db.prepare('SELECT DISTINCT capacity FROM class_instances WHERE rule_id = ? AND starts_at > ?')
+    .pluck().all(ruleId, new Date().toISOString());
   assert.deepEqual(caps, [3]);
   assert.equal(db.prepare('SELECT status FROM bookings WHERE id = ?').get(wl.id).status, 'booked');
 

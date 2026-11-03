@@ -11,6 +11,7 @@ services:
     #environment:
     #  BASE_URL: https://booking.example.com
     #  APP_SECRET: change-me
+    #  TOTP_ENCRYPTION_KEY: 64-random-hexadecimal-characters
     #  TRUST_PROXY: "1"
     #  SMTP_HOST: smtp.example.com
     #  SMTP_PORT: "587"

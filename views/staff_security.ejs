@@ -1,0 +1,51 @@
+<%- include('partials/head') %>
+<article class="narrow">
+  <h2>Account security</h2>
+  <% if (error) { %><p class="flash error" role="alert"><%= error %></p><% } %>
+  <% if (codes) { %>
+    <h3>Save your recovery codes now</h3>
+    <p>These codes are shown only in this response. Save them in a password manager or print them somewhere safe. Each code works once. Previous recovery codes no longer work.</p>
+    <ul><% for (const code of codes) { %><li><code><%= code %></code></li><% } %></ul>
+    <p>Other sessions for your account have been signed out.</p>
+  <% } %>
+  <p>Two-factor authentication is <strong><%= enabled ? 'enabled' : 'not enabled' %></strong>.</p>
+  <% if (!configured) { %>
+    <p>The operator must configure TOTP_ENCRYPTION_KEY before authenticator enrollment is available.</p>
+  <% } else if (!enabled) { %>
+    <% if (secret) { %>
+      <h3>Connect your authenticator</h3>
+      <p>Add a time-based account in your authenticator. Use issuer Studio OS and your staff email.</p>
+      <p>Setup key: <code><%= secret %></code></p>
+      <p><a href="<%= uri %>">Open in an authenticator on this device</a></p>
+      <p>This setup expires after 10 minutes. Enter a code to enable 2FA. Keep your device clock synchronized.</p>
+      <form method="post" action="/staff/security/enable"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label>Current password <input type="password" name="password" autocomplete="current-password" required></label>
+        <label>Authenticator code <input name="code" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" required></label>
+        <button>Enable two-factor authentication</button>
+      </form>
+      <form method="post" action="/staff/security/cancel"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="secondary">Cancel authenticator setup</button>
+      </form>
+    <% } else { %>
+      <p>Protect your staff login with a time-based authenticator. Client magic links are unchanged.</p>
+      <form method="post" action="/staff/security/setup"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label>Current password <input type="password" name="password" autocomplete="current-password" required></label>
+        <button>Set up authenticator</button>
+      </form>
+    <% } %>
+  <% } else { %>
+    <p><%= remaining %> unused recovery code(s) remain. A code already used in this 30-second window cannot be reused.</p>
+    <% if (remaining <= 2) { %>
+      <p role="alert">Your recovery codes are running low. Replace them now and save the new set somewhere safe.</p>
+    <% } %>
+    <% for (const action of ['regenerate', 'disable']) { %>
+      <h3><%= action === 'regenerate' ? 'Replace recovery codes' : 'Disable two-factor authentication' %></h3>
+      <form method="post" action="/staff/security/<%= action %>"><input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label>Current password <input type="password" name="password" autocomplete="current-password" required></label>
+        <label>Fresh authenticator or unused recovery code <input name="code" autocomplete="one-time-code" maxlength="40" required></label>
+        <button class="<%= action === 'disable' ? 'secondary' : '' %>"><%= action === 'regenerate' ? 'Replace recovery codes' : 'Disable two-factor authentication' %></button>
+      </form>
+    <% } %>
+  <% } %>
+</article>
+<%- include('partials/foot') %>
