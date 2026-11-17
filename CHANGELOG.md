@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fix upcoming schedule windows so fractional-second start times exclude classes
+  that have already started, and timezone-offset inputs match their UTC equivalents.
+
 ## 0.7.0 - 2026-11-03
 
 **Upgrading:** back up the database before starting this version. Schema v5

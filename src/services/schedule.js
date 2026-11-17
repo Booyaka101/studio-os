@@ -49,8 +49,12 @@ export function generateInstances(db, { now } = {}) {
 
 /** Upcoming scheduled instances joined with type + instructor, for listings. */
 export function upcomingInstances(db, { days = 14, from, classTypeId, instructorId, includeCancelled = false } = {}) {
-  const fromIso = from || new Date().toISOString();
-  const toIso = new Date(new Date(fromIso).getTime() + days * 86400000).toISOString();
+  const fromMs = new Date(from || new Date()).getTime();
+  // Stored starts_at values have whole-second precision. Ceil both bounds to
+  // preserve [from, to) semantics while keeping indexed text comparisons valid.
+  const [fromIso, toIso] = [fromMs, fromMs + days * 86400000].map((ms) =>
+    new Date(Math.ceil(ms / 1000) * 1000).toISOString().replace('.000Z', 'Z')
+  );
   let sql = `
     SELECT ci.*, ct.name AS class_name, ct.color, ct.credits_required, ct.drop_in_price_cents,
            ct.description AS class_description, i.name AS instructor_name,

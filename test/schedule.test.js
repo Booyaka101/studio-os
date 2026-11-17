@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { testDb, makeClassType } from './helpers.js';
+import { testDb, makeClassType, makeInstance } from './helpers.js';
 import { generateInstances, upcomingInstances } from '../src/services/schedule.js';
 import { zonedToUtc, localDateStr, utcToZoned } from '../src/lib/time.js';
 
@@ -99,4 +99,21 @@ test('upcomingInstances filters by type and hides cancelled', () => {
   db.prepare("UPDATE class_instances SET status='cancelled' WHERE id = ?").run(all[0].id);
   const after = upcomingInstances(db, { days: 14 });
   assert.equal(after.length, all.length - 1);
+});
+
+test('upcomingInstances respects inclusive start and exclusive end across timestamp formats', (t) => {
+  const db = testDb();
+  t.after(() => db.close());
+  const type = makeClassType(db);
+  const first = makeInstance(db, type, { now: '2026-08-03T09:00:00Z', hoursFromNow: 0 });
+  const last = makeInstance(db, type, { now: '2026-08-04T09:00:00Z', hoursFromNow: 0 });
+
+  for (const from of ['2026-08-03T09:00:00Z', '2026-08-03T09:00:00.000Z', '2026-08-03T17:00:00+08:00']) {
+    assert.deepEqual(upcomingInstances(db, { from, days: 1 }).map((r) => r.id), [first], from);
+  }
+  assert.deepEqual(
+    upcomingInstances(db, { from: '2026-08-03T09:00:00.001Z', days: 1 }).map((r) => r.id),
+    [last],
+    'fractional bounds exclude the already-started class but include the last whole second'
+  );
 });
