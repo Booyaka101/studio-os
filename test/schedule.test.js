@@ -117,3 +117,30 @@ test('upcomingInstances respects inclusive start and exclusive end across timest
     'fractional bounds exclude the already-started class but include the last whole second'
   );
 });
+
+test('upcomingInstances matches chronological bounds across midnight and DST changes', (t) => {
+  const db = testDb();
+  t.after(() => db.close());
+  const type = makeClassType(db);
+  const starts = [
+    '2026-03-08T06:59:59Z', '2026-03-08T07:00:00Z', '2026-03-09T06:59:59Z',
+    '2026-08-03T23:59:59Z', '2026-08-04T00:00:00Z', '2026-08-04T00:00:01Z',
+    '2026-08-04T23:59:59Z', '2026-08-05T00:00:00Z',
+  ];
+  for (const now of starts) makeInstance(db, type, { now, hoursFromNow: 0 });
+
+  const windows = [
+    { from: '2026-08-03T23:59:59.999Z', days: 1 },
+    { from: '2026-08-04T00:00:00.001Z', days: 1 },
+    { from: '2026-08-04T00:00:00Z', days: 0 },
+    { from: '2026-08-04T00:00:00.001Z', days: 0 },
+    { from: '2026-03-08T01:59:59.999-05:00', days: 1 },
+    { from: '2026-03-08T03:00:00-04:00', days: 1 },
+  ];
+  for (const window of windows) {
+    const fromMs = Date.parse(window.from);
+    const toMs = fromMs + window.days * 86400000;
+    const expected = starts.filter((start) => Date.parse(start) >= fromMs && Date.parse(start) < toMs);
+    assert.deepEqual(upcomingInstances(db, window).map((r) => r.starts_at), expected, JSON.stringify(window));
+  }
+});

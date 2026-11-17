@@ -110,6 +110,30 @@ test('public schedule renders instances', async () => {
   assert.match(res.text, /spots? left/);
 });
 
+test('public schedule hides already-started classes at fractional-second boundaries', async (t) => {
+  const now = '2026-08-03T23:59:59.999Z';
+  t.mock.timers.enable({ apis: ['Date'], now: Date.parse(now) });
+  const { db, app } = makeApp();
+  t.after(() => db.close());
+  const started = makeInstance(db, makeClassType(db, { name: 'Started class' }), { now, hoursFromNow: 0 });
+  const next = makeInstance(db, makeClassType(db, { name: 'Upcoming class' }), {
+    now: '2026-08-04T00:00:00Z', hoursFromNow: 0,
+  });
+  const last = makeInstance(db, makeClassType(db, { name: 'Last in window' }), {
+    now: '2026-08-17T23:59:59Z', hoursFromNow: 0,
+  });
+  const outside = makeInstance(db, makeClassType(db, { name: 'Outside window' }), {
+    now: '2026-08-18T00:00:00Z', hoursFromNow: 0,
+  });
+
+  const res = await request(app).get('/');
+  assert.equal(res.status, 200);
+  assert.doesNotMatch(res.text, new RegExp(`/class/${started}\\b`));
+  assert.match(res.text, new RegExp(`/class/${next}\\b`));
+  assert.match(res.text, new RegExp(`/class/${last}\\b`));
+  assert.doesNotMatch(res.text, new RegExp(`/class/${outside}\\b`));
+});
+
 test('guest booking round-trip: waiver required, then booked; client + waiver stored', async () => {
   const { db, app } = makeApp();
   const type = makeClassType(db, { name: 'Boxing', capacity: 5 });
