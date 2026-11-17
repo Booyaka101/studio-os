@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { testDb, makeClassType } from './helpers.js';
+import { testDb, makeClassType, makeInstance } from './helpers.js';
 import { generateInstances, upcomingInstances } from '../src/services/schedule.js';
 import { zonedToUtc, localDateStr, utcToZoned } from '../src/lib/time.js';
 
@@ -99,4 +99,48 @@ test('upcomingInstances filters by type and hides cancelled', () => {
   db.prepare("UPDATE class_instances SET status='cancelled' WHERE id = ?").run(all[0].id);
   const after = upcomingInstances(db, { days: 14 });
   assert.equal(after.length, all.length - 1);
+});
+
+test('upcomingInstances respects inclusive start and exclusive end across timestamp formats', (t) => {
+  const db = testDb();
+  t.after(() => db.close());
+  const type = makeClassType(db);
+  const first = makeInstance(db, type, { now: '2026-08-03T09:00:00Z', hoursFromNow: 0 });
+  const last = makeInstance(db, type, { now: '2026-08-04T09:00:00Z', hoursFromNow: 0 });
+
+  for (const from of ['2026-08-03T09:00:00Z', '2026-08-03T09:00:00.000Z', '2026-08-03T17:00:00+08:00']) {
+    assert.deepEqual(upcomingInstances(db, { from, days: 1 }).map((r) => r.id), [first], from);
+  }
+  assert.deepEqual(
+    upcomingInstances(db, { from: '2026-08-03T09:00:00.001Z', days: 1 }).map((r) => r.id),
+    [last],
+    'fractional bounds exclude the already-started class but include the last whole second'
+  );
+});
+
+test('upcomingInstances matches chronological bounds across midnight and DST changes', (t) => {
+  const db = testDb();
+  t.after(() => db.close());
+  const type = makeClassType(db);
+  const starts = [
+    '2026-03-08T06:59:59Z', '2026-03-08T07:00:00Z', '2026-03-09T06:59:59Z',
+    '2026-08-03T23:59:59Z', '2026-08-04T00:00:00Z', '2026-08-04T00:00:01Z',
+    '2026-08-04T23:59:59Z', '2026-08-05T00:00:00Z',
+  ];
+  for (const now of starts) makeInstance(db, type, { now, hoursFromNow: 0 });
+
+  const windows = [
+    { from: '2026-08-03T23:59:59.999Z', days: 1 },
+    { from: '2026-08-04T00:00:00.001Z', days: 1 },
+    { from: '2026-08-04T00:00:00Z', days: 0 },
+    { from: '2026-08-04T00:00:00.001Z', days: 0 },
+    { from: '2026-03-08T01:59:59.999-05:00', days: 1 },
+    { from: '2026-03-08T03:00:00-04:00', days: 1 },
+  ];
+  for (const window of windows) {
+    const fromMs = Date.parse(window.from);
+    const toMs = fromMs + window.days * 86400000;
+    const expected = starts.filter((start) => Date.parse(start) >= fromMs && Date.parse(start) < toMs);
+    assert.deepEqual(upcomingInstances(db, window).map((r) => r.starts_at), expected, JSON.stringify(window));
+  }
 });

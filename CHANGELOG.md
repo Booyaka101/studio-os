@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1 - 2026-11-17
+
+- Fix upcoming schedule windows so fractional-second start times exclude classes
+  that have already started, and timezone-offset inputs match their UTC equivalents.
+- Add regression coverage for midnight rollover, empty schedule windows, DST
+  offsets and the public schedule's fractional-second boundaries.
+- Include dependency updates merged since 0.7.0.
+
+**Upgrading:** no schema or configuration changes. Existing 0.7.0 installations
+can upgrade normally; back up the database before upgrading.
+
 ## 0.7.0 - 2026-11-03
 
 **Upgrading:** back up the database before starting this version. Schema v5
